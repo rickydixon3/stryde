@@ -1,5 +1,9 @@
 // Handling Strava Authentication
 import { Router } from 'express';
+import { supabase } from '../supabase';
+import dotenv from 'dotenv'
+
+dotenv.config();
 
 const router = Router();
 
@@ -34,8 +38,27 @@ router.get('/strava/callback', async (req, res) => {
     });
 
     const tokens = await tokenResponse.json();
-    res.json(tokens);
 
-})
+    console.log('Supabase URL:', process.env.SUPABASE_URL);
+    // Parsing through user info via token response (json)
+    const { data, error } = await supabase.from('users').insert({
+        // column           value
+
+        strava_athlete_id: tokens.athlete.id,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_expires_at: new Date(tokens.expires_at * 1000),
+        firstname: tokens.athlete.firstname,
+        lastname: tokens.athlete.lastname,
+        created_at: new Date()
+    });
+
+    if (error) {
+        res.status(500).json({ error: error.message});
+    } else {
+        res.json({ message: 'success '});
+    }
+
+});
 
 export default router;
