@@ -1,14 +1,10 @@
 // Handling Strava Authentication
 import { Router } from 'express';
 import { supabase } from '../supabase';
-import dotenv from 'dotenv'
-
-dotenv.config();
 
 const router = Router();
 
 router.get('/strava', (req, res) => {
-
     // Constructing url to stravas authentification page
     const baseURL = 'https://www.strava.com/oauth/authorize';
     const clientID = process.env.STRAVA_CLIENT_ID;
@@ -39,24 +35,49 @@ router.get('/strava/callback', async (req, res) => {
 
     const tokens = await tokenResponse.json();
 
-    console.log('Supabase URL:', process.env.SUPABASE_URL);
-    // Parsing through user info via token response (json)
-    const { data, error } = await supabase.from('users').insert({
-        // column           value
+    const { data: existingUser, error: selectError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('strava_athlete_id', tokens.athlete.id);
 
-        strava_athlete_id: tokens.athlete.id,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expires_at: new Date(tokens.expires_at * 1000),
-        firstname: tokens.athlete.firstname,
-        lastname: tokens.athlete.lastname,
-        created_at: new Date()
-    });
+        let data, error;
+
+    // Check for existing user
+    // Creating new user in database
+    if (existingUser.length === 0) {
+        const result = await supabase.from('users').insert({
+            // column           value
+            strava_athlete_id: tokens.athlete.id,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_expires_at: new Date(tokens.expires_at * 1000),
+            firstname: tokens.athlete.firstname,
+            lastname: tokens.athlete.lastname,
+            created_at: new Date()
+        });
+
+        data = result.data;
+        error = result.error;
+
+    // Checking for existing user
+    // Updating access, refresh tokens and expiration date
+    } else {
+        const result = await supabase
+            .from('users')
+            .update({
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                token_expires_at: new Date(tokens.expires_at * 1000),
+            })
+            .eq('strava_athlete_id', tokens.athlete.id);
+            data = result.data;
+            error = result.error; 
+    }
 
     if (error) {
         res.status(500).json({ error: error.message});
     } else {
-        res.json({ message: 'success '});
+        res.json({ message: 'success'});
     }
 
 });
