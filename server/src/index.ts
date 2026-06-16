@@ -2,8 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
-import { supabase } from './supabase';
-
+import activitiesRoutes from './routes/activities'
 
 dotenv.config();
 
@@ -20,9 +19,9 @@ app.get('/health', (req: Request, res: Response) => {
 // Authorization route
 app.use('/auth', authRoutes);
 
+// activity sync route
+app.use('/activities', activitiesRoutes);
+
 app.listen(PORT, () => {
   console.log(`Stryde server running on port ${PORT}`);
 });
-
-
-
