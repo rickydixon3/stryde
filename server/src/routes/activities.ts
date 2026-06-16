@@ -1,44 +1,19 @@
 import { Router } from 'express';
 import { supabase } from '../supabase';
+import { getValidAccessToken } from '../utils/strava';
 
 const router = Router();
 
 // NEED TO IMPLEMENT JWT SYNCING
 
+// SYNCING ACTIVITIES
 router.get('/sync', async (req, res) => {
     const {data: user, error } = await supabase
         .from('users')
         .select('*')
         .single();
 
-        let accessToken = user.access_token;
-
-        // if token expired, refresh token
-        if (new Date() > new Date(user.token_expires_at)) {
-            const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    client_id: process.env.STRAVA_CLIENT_ID,
-                    client_secret: process.env.STRAVA_CLIENT_SECRET,
-                    refresh_token: user.refresh_token,
-                    grant_type: 'refresh_token'
-                })
-            });
-
-            const tokens = await tokenResponse.json();
-
-            const result = await supabase
-                .from('users')
-                .update({
-                    access_token: tokens.access_token,
-                    token_expires_at: new Date(tokens.expires_at * 1000),
-                    refresh_token: tokens.refresh_token
-                })
-                .eq('id', user.id)
-
-            accessToken = tokens.access_token;
-        }
+        const accessToken = await getValidAccessToken(user);
 
         let page = 1;
         let activities: any[] = [];
@@ -92,6 +67,47 @@ router.get('/sync', async (req, res) => {
         }
 
         res.json( {message: 'sync complete'})
+});
+
+// SYNCING ACTIVITY STREAMS
+
+// gets array of activities within 60 days
+router.get('/sync-streams', async (req, res) => {
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60); // 60 days ago
+
+    const {data: user} = await supabase
+        .from('users')
+        .select('*')
+        .single();
+
+    const accessToken = await getValidAccessToken(user);
+
+    const { data: recentActivities, error } = await supabase
+        .from('activities')
+        .select('*')
+        .gte('start_date', sixtyDaysAgo.toISOString());
+
+        for (const activity of recentActivities) {
+
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            const streamData = await response.json();
+
+            const { data: stream } = await supabase.from('activity_streams').upsert({
+                // row        column
+                activity_id: activity.id,
+                heartrate: streamData.heartrate?.data ?? null,
+                cadence: streamData.cadence?.data ?? null,
+                velocity: streamData.velocity_smooth?.data ?? null,
+                altitude: streamData.altitude?.data ?? null
+            },  { onConflict: 'activity_id'});
+        }
+        res.json({ message: 'streams synced' })
 });
 
 export default router
