@@ -1,11 +1,11 @@
-// Handling Strava Authentication
+// Handling Strava OAuth
 import { Router } from 'express';
 import { supabase } from '../supabase';
 
 const router = Router();
 
 router.get('/strava', (req, res) => {
-    // Constructing url to stravas authentification page
+    // Constructing url to stravas authorization page
     const baseURL = 'https://www.strava.com/oauth/authorize';
     const clientID = process.env.STRAVA_CLIENT_ID;
     const redirectURI = 'http://localhost:3000/auth/strava/callback';
@@ -35,6 +35,7 @@ router.get('/strava/callback', async (req, res) => {
 
     const tokens = await tokenResponse.json();
 
+    // Creating user into database using strava information
     const { data: existingUser, error: selectError } = await supabase
         .from('users')
         .select('*')
