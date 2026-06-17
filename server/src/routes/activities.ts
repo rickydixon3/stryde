@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { supabase } from '../supabase';
 import { getValidAccessToken } from '../utils/strava';
+import { computeACWR } from "../signals/acwr";
+import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
 
 const router = Router();
 
@@ -108,6 +110,26 @@ router.get('/sync-streams', async (req, res) => {
             },  { onConflict: 'activity_id'});
         }
         res.json({ message: 'streams synced' })
+});
+
+// Route to test Acute Chronic Workload Ratio algoritihmn
+router.get('/test-acwr', async (req, res) => {
+    const { data: activities } = await supabase
+        .from('activities')
+        .select('*');
+    
+    const result = computeACWR(activities);
+    res.json(result);
+});
+
+// Route to test Consecutive Hard Day Detection
+router.get('/test-chdd', async (req, res) => {
+    const { data: activities } = await supabase
+        .from('activities')
+        .select('*');
+    
+    const result = computeConsecutiveHardDays(activities);
+    res.json(result);
 });
 
 export default router
