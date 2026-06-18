@@ -16,7 +16,7 @@
  * to reflect total daily training stress.
  *
  * Severity Levels (based on longest consecutive hard streak):
- *   0 → none     — no consecutive hard days detected
+ *   0 → none     — no consecutive hard days detected3
  *   1 → low      — 1 hard day, no pattern concern
  *   2 → elevated — 2 consecutive hard days, insufficient recovery
  *   3 → high     — 3 consecutive hard days, significant accumulated stress

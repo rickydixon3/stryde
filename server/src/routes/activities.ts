@@ -141,4 +141,16 @@ router.get('/test-baselines', async (req, res) => {
     res.json({ calibration, baselines });
 });
 
+// Route to test Single Session Spike
+import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
+
+router.get('/test-spike', async (req, res) => {
+    const { data: activities } = await supabase
+        .from('activities')
+        .select('*');
+    
+    const result = computeSingleSessionSpike(activities);
+    res.json(result);
+});
+
 export default router
