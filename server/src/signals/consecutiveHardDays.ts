@@ -32,15 +32,24 @@
  *   recentDays    — raw classified array of the last 10 days
  */
 
+import { checkCalibration, computeBaselines } from "../utils/baselines";
+import { Baselines } from '../utils/baselines';
 
-const classify = (sufferScore: number): string => {
-    if (sufferScore < 25) return 'easy';
-    if (sufferScore < 50) return 'moderate';
-    if (sufferScore < 75) return 'hard';
+
+const POPULATION_THRESHOLDS = {
+    easyThreshold: 25,
+    moderateThreshold: 50,
+    hardThreshold: 75
+}
+
+const classify = (sufferScore: number, baselines: Baselines): string => {
+    if (sufferScore < baselines.easyThreshold) return 'easy';
+    if (sufferScore < baselines.moderateThreshold) return 'moderate';
+    if (sufferScore < baselines.hardThreshold) return 'hard';
     return 'very_hard';
 }
 
-const classifyDays = (recentActivities) => {
+const classifyDays = (recentActivities: any[], baselines: Baselines) => {
     const classifiedDays = []
     let matchingActivities;
 
@@ -57,7 +66,7 @@ const classifyDays = (recentActivities) => {
             classifiedDays.push('rest')
         } else {
             const totalSufferScore = matchingActivities.reduce((run, activity) => run + activity.suffer_score, 0);
-            classifiedDays.push(classify(totalSufferScore));
+            classifiedDays.push(classify(totalSufferScore, baselines));
         }
     }
     return classifiedDays;
@@ -68,10 +77,13 @@ const getSeverity  = (streak: number) => {
     if (streak === 1) return {severity: 1, flag: 'low'}
     if (streak === 2) return {severity: 2, flag: 'elevated'}
     if (streak === 3) return {severity: 3, flag: 'high'}
-    if (streak > 3) return {severity: 4, flag: 'crtical'}
+    return { severity: 4, flag: 'critical '}
 }
 
 export const computeConsecutiveHardDays = (activities: any[]) => {
+
+    const calibration = checkCalibration(activities);
+    const baselines = calibration.isCalibrated ? computeBaselines(activities) : POPULATION_THRESHOLDS;
     // Ten days ago
     const tenDaysAgo = new Date();
     tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
@@ -79,7 +91,7 @@ export const computeConsecutiveHardDays = (activities: any[]) => {
 
     // Getting activities from past 10 days
     const tenDayActivities = activities.filter(activity => new Date(activity.start_date) >= tenDaysAgo);
-    const dayPattern = classifyDays(tenDayActivities)
+    const dayPattern = classifyDays(tenDayActivities, baselines)
 
     let currentHardStreak = 0;
     let longestHardstreak = 0;

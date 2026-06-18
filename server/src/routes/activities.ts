@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { getValidAccessToken } from '../utils/strava';
 import { computeACWR } from "../signals/acwr";
 import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
+import { checkCalibration, computeBaselines } from '../signals/../utils/baselines';
 
 const router = Router();
 
@@ -130,6 +131,14 @@ router.get('/test-chdd', async (req, res) => {
     
     const result = computeConsecutiveHardDays(activities);
     res.json(result);
+});
+
+// Route to test calibrations and baselines
+router.get('/test-baselines', async (req, res) => {
+    const { data: activities } = await supabase.from('activities').select('*');
+    const calibration = checkCalibration(activities);
+    const baselines = computeBaselines(activities);
+    res.json({ calibration, baselines });
 });
 
 export default router
