@@ -4,6 +4,8 @@ import { getValidAccessToken } from '../utils/strava';
 import { computeACWR } from "../signals/acwr";
 import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
 import { checkCalibration, computeBaselines } from '../signals/../utils/baselines';
+import { computeCadenceDegregation } from '../signals/cadenceDegregation';
+import { computeCardiacDrift } from '../signals/cardiacDrift';
 
 const router = Router();
 
@@ -143,6 +145,58 @@ router.get('/test-baselines', async (req, res) => {
 
 // Route to test Single Session Spike
 import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
+
+router.get('/test-cadence-degregation', async (req, res) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const { data: recentActivities } = await supabase
+        .from('activities')
+        .select('*')
+        .gte('start_date', sevenDaysAgo.toISOString());
+
+    const activityIds = recentActivities.map(activity => activity.id);
+
+    const { data: recentStreams } = await supabase
+        .from('activity_streams')
+        .select('*')
+        .in('activity_id', activityIds)
+
+    const activitesWithStreams = recentActivities.map(activity => ({
+        ...activity,
+        stream: recentStreams.find(stream => stream.activity_id === activity.id)
+    }));
+
+    res.json(computeCadenceDegregation(activitesWithStreams));
+
+});
+
+router.get('/test-cardiac-drift', async (req, res) => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const { data: recentActivities } = await supabase
+        .from('activities')
+        .select('*')
+        .gte('start_date', sevenDaysAgo.toISOString());
+
+    const activityIds = recentActivities.map(activity => activity.id);
+
+    const { data: recentStreams } = await supabase
+        .from('activity_streams')
+        .select('*')
+        .in('activity_id', activityIds)
+
+    const activitesWithStreams = recentActivities.map(activity => ({
+        ...activity,
+        stream: recentStreams.find(stream => stream.activity_id === activity.id)
+    }));
+
+    res.json(computeCardiacDrift(activitesWithStreams));
+
+});
 
 router.get('/test-spike', async (req, res) => {
     const { data: activities } = await supabase
