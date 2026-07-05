@@ -1,0 +1,207 @@
+import { useState, useEffect } from 'react'
+import { apiFetch } from '../utils/api'
+
+export default function Settings() {
+  const [restingHr, setRestingHr] = useState('')
+  const [maxHr, setMaxHr] = useState('')
+  const [hrSaved, setHrSaved] = useState(false)
+  const [hrError, setHrError] = useState('')
+  const [savingHr, setSavingHr] = useState(false)
+
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [disconnectError, setDisconnectError] = useState('')
+
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => {
+    apiFetch('/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        setRestingHr(data.resting_hr?.toString() ?? '')
+        setMaxHr(data.max_hr?.toString() ?? '')
+      })
+  }, [])
+
+  const handleSaveHr = async () => {
+    setHrError('')
+    setHrSaved(false)
+
+    const parsedResting = parseInt(restingHr)
+    const parsedMax = parseInt(maxHr)
+
+    if (!restingHr || isNaN(parsedResting) || parsedResting <= 0) {
+      setHrError('Enter a valid resting heart rate')
+      return
+    }
+    if (!maxHr || isNaN(parsedMax) || parsedMax <= 0) {
+      setHrError('Enter a valid max heart rate')
+      return
+    }
+    if (parsedResting >= parsedMax) {
+      setHrError('Resting heart rate should be lower than max heart rate')
+      return
+    }
+
+    setSavingHr(true)
+    const res = await apiFetch('/auth/hr-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restingHr: parsedResting, maxHr: parsedMax })
+    })
+
+    setSavingHr(false)
+    if (res.ok) {
+      setHrSaved(true)
+    } else {
+      setHrError('Something went wrong. Try again.')
+    }
+  }
+
+  const handleDisconnect = async () => {
+    setDisconnectError('')
+    setDisconnecting(true)
+
+    const res = await apiFetch('/auth/disconnect', { method: 'POST' })
+
+    setDisconnecting(false)
+    if (res.ok) {
+      localStorage.removeItem('token')
+      window.location.href = '/landing'
+    } else {
+      setDisconnectError('Something went wrong disconnecting from Strava. Try again.')
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleteError('')
+
+    if (confirmText !== 'DELETE') {
+      setDeleteError('Type DELETE exactly to confirm')
+      return
+    }
+
+    setDeleting(true)
+
+    try {
+      const res = await apiFetch('/auth/delete-account', { method: 'DELETE' })
+
+      if (res.ok) {
+        localStorage.removeItem('token')
+        window.location.href = '/landing'
+      } else {
+        setDeleteError('Something went wrong. Please try again.')
+        setDeleting(false)
+      }
+    } catch (err) {
+      setDeleteError('Something went wrong. Please try again.')
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-8 py-8 flex flex-col gap-6">
+
+      <div>
+        <h1 className="text-lg font-medium text-[#ededed]">Settings</h1>
+      </div>
+
+      {/* Heart rate settings */}
+      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
+        <p className="text-sm font-medium text-[#ededed] mb-1">Heart rate</p>
+        <p className="text-sm text-[#888888] mb-4">
+          Used to calculate efficiency, drift, and effort across your runs.
+        </p>
+
+        <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+          Resting heart rate
+        </label>
+        <input
+          type="number"
+          value={restingHr}
+          onChange={(e) => setRestingHr(e.target.value)}
+          className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#ededed] outline-none focus:border-[#378ADD] mb-4"
+        />
+
+        <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+          Max heart rate
+        </label>
+        <input
+          type="number"
+          value={maxHr}
+          onChange={(e) => setMaxHr(e.target.value)}
+          className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#ededed] outline-none focus:border-[#378ADD] mb-3"
+        />
+
+        {hrError && <p className="text-xs text-[#ef4444] mb-3">{hrError}</p>}
+        {hrSaved && <p className="text-xs text-[#1D9E75] mb-3">Saved</p>}
+
+        <button
+          onClick={handleSaveHr}
+          disabled={savingHr}
+          className="bg-[#1D9E75] hover:bg-[#178a64] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
+        >
+          {savingHr ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+
+      {/* Disconnect */}
+      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
+        <p className="text-sm font-medium text-[#ededed] mb-1">Disconnect Strava</p>
+        <p className="text-sm text-[#888888] mb-4">
+          Revokes Stryde's access to your Strava account. Your training history stays saved,
+          and you can reconnect anytime.
+        </p>
+
+        {disconnectError && <p className="text-xs text-[#ef4444] mb-3">{disconnectError}</p>}
+
+        <button
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          className="bg-[#1f1f1f] hover:bg-[#2a2a2a] disabled:opacity-50 text-[#ededed] text-sm font-medium px-4 py-2 rounded-md transition-colors"
+        >
+          {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+        </button>
+      </div>
+
+      {/* Danger zone */}
+      <div className="border border-[#ef4444]/30 rounded-lg p-5 bg-[#161616]">
+        <p className="text-sm font-medium text-[#ef4444] mb-1">Delete account</p>
+        <p className="text-sm text-[#888888] mb-4">
+          This permanently deletes your account, revokes Stryde's access to your Strava data,
+          and removes all activities, streams, and settings we've stored. This cannot be undone.
+        </p>
+
+        <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+          Type DELETE to confirm
+        </label>
+        <input
+          type="text"
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          placeholder="DELETE"
+          className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#ededed] placeholder-[#555555] outline-none focus:border-[#ef4444] mb-3"
+        />
+
+        {deleteError && <p className="text-xs text-[#ef4444] mb-3">{deleteError}</p>}
+
+        <button
+          onClick={handleDelete}
+          disabled={deleting || confirmText !== 'DELETE'}
+          className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 rounded-md transition-colors"
+        >
+          {deleting ? 'Deleting...' : 'Permanently delete my account'}
+        </button>
+      </div>
+
+      {/* Footer links */}
+      <p className="text-xs text-[#555555] text-center mt-2">
+        <a href="/privacy" className="hover:underline">Privacy Policy</a>
+        {' · '}
+        <a href="mailto:awesomericky8@gmail.com" className="hover:underline">Contact support</a>
+      </p>
+
+    </div>
+  )
+}
