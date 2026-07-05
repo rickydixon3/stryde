@@ -1,152 +1,55 @@
 import { Router } from 'express';
 import { supabase } from '../supabase';
-import { getValidAccessToken } from '../utils/strava';
-import { computeACWR } from "../signals/acwr";
 import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
 import { checkCalibration, computeBaselines } from '../signals/../utils/baselines';
-import { computeCadenceDegregation } from '../signals/cadenceDegregation';
-import { computeCardiacDrift } from '../signals/cardiacDrift';
+import { computeCardiacDrift, computeRunDrift } from '../signals/cardiacDrift';
+import { classifyEffortByHRR, computeHrrBaselines } from '../signals/runEfficiency';
+import { getEFResults } from '../utils/efPipeline';
+import { AuthenticatedRequest, requireAuth } from '../middleware/requireAuth';
+import { syncActivities, syncStreams } from '../utils/sync';
+import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
 
 const router = Router();
 
-// NEED TO IMPLEMENT JWT SYNCING
-
 // SYNCING ACTIVITIES
-router.get('/sync', async (req, res) => {
-    const {data: user, error } = await supabase
+router.get('/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
         .from('users')
         .select('*')
+        .eq('id', req.userId)
         .single();
 
-        const accessToken = await getValidAccessToken(user);
-
-        let page = 1;
-        let activities: any[] = [];
-
-        while (true) {
-            const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-    
-            activities = await response.json();
-            if (activities.length == 0) break;
-    
-            // types of runs to filter
-            // only want runs in database
-            const runningTypes = ['Run', 'TrailRun', 'VirtualRun', 'Treadmill'];
-    
-            // pulling only running activities
-            const runs = activities.filter(activity => 
-                runningTypes.includes(activity.sport_type)
-            );
-    
-            for (const run of runs) {
-                // inserting values into activities table
-                const {error: insertError } = await supabase.from('activities').upsert({
-                    //column           //row
-                    user_id: user.id,
-                    strava_id: run.id,
-                    name: run.name,
-                    distance: run.distance,
-                    duration: run.moving_time,
-                    start_date: run.start_date,
-                    average_speed: run.average_speed,
-                    average_heartrate: run.average_heartrate,
-                    average_cadence: run.average_cadence,
-                    suffer_score: run.suffer_score,
-                    start_lat: run.start_latlng[0] ?? null,// lattiude, longitude,index 0 = lat
-                    start_lng: run.start_latlng[1] ?? null, // longitude, lattiude,index 1 = long, saftey check for treadmill
-                    device_name: run.device_name,
-                    sport_type: run.sport_type
-                    // Skips insertion for values already in table (no duplicates)
-                }, { onConflict: 'strava_id'}); // Every run has a specific id, checks if run in table
-                
-                if (insertError) {
-                    console.log('Insert error:', insertError.message);
-                }
-            }
-            page++;
-        }
-
-        res.json( {message: 'sync complete'})
+    await syncActivities(user);
+    res.json({ message: 'sync complete' });
 });
 
-// SYNCING ACTIVITY STREAMS
-
-// gets array of activities within 60 days
-router.get('/sync-streams', async (req, res) => {
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60); // 60 days ago
-
-    const {data: user} = await supabase
+router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
         .from('users')
         .select('*')
+        .eq('id', req.userId)
         .single();
 
-    const accessToken = await getValidAccessToken(user);
-
-    const { data: recentActivities, error } = await supabase
-        .from('activities')
-        .select('*')
-        .gte('start_date', sixtyDaysAgo.toISOString());
-
-        for (const activity of recentActivities) {
-
-            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-            const streamData = await response.json();
-
-            const { data: stream } = await supabase.from('activity_streams').upsert({
-                // row        column
-                activity_id: activity.id,
-                heartrate: streamData.heartrate?.data ?? null,
-                cadence: streamData.cadence?.data ?? null,
-                velocity: streamData.velocity_smooth?.data ?? null,
-                altitude: streamData.altitude?.data ?? null
-            },  { onConflict: 'activity_id'});
-        }
-        res.json({ message: 'streams synced' })
-});
-
-// Route to test Acute Chronic Workload Ratio algoritihmn
-router.get('/test-acwr', async (req, res) => {
-    const { data: activities } = await supabase
-        .from('activities')
-        .select('*');
-    
-    const result = computeACWR(activities);
-    res.json(result);
-});
-
-// Route to test Consecutive Hard Day Detection
-router.get('/test-chdd', async (req, res) => {
-    const { data: activities } = await supabase
-        .from('activities')
-        .select('*');
-    
-    const result = computeConsecutiveHardDays(activities);
-    res.json(result);
+    await syncStreams(user);
+    res.json({ message: 'streams synced' });
 });
 
 // Route to test calibrations and baselines
-router.get('/test-baselines', async (req, res) => {
-    const { data: activities } = await supabase.from('activities').select('*');
+router.get('/test-baselines', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: activities } = await supabase.from('activities').select('*').eq('user_id', req.userId);
     const calibration = checkCalibration(activities);
     const baselines = computeBaselines(activities);
     res.json({ calibration, baselines });
 });
 
 // Route to test Single Session Spike
-import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
+router.get('/cardiac-drift', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
+        .from('users')
+        .select('resting_hr, max_hr')
+        .eq('id', req.userId)
+        .single();
 
-router.get('/test-cadence-degregation', async (req, res) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -154,6 +57,7 @@ router.get('/test-cadence-degregation', async (req, res) => {
     const { data: recentActivities } = await supabase
         .from('activities')
         .select('*')
+        .eq('user_id', req.userId)
         .gte('start_date', sevenDaysAgo.toISOString());
 
     const activityIds = recentActivities.map(activity => activity.id);
@@ -168,43 +72,148 @@ router.get('/test-cadence-degregation', async (req, res) => {
         stream: recentStreams.find(stream => stream.activity_id === activity.id)
     }));
 
-    res.json(computeCadenceDegregation(activitesWithStreams));
-
+    res.json(computeCardiacDrift(activitesWithStreams, user.resting_hr, user.max_hr));
 });
 
-router.get('/test-cardiac-drift', async (req, res) => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
-    const { data: recentActivities } = await supabase
-        .from('activities')
-        .select('*')
-        .gte('start_date', sevenDaysAgo.toISOString());
-
-    const activityIds = recentActivities.map(activity => activity.id);
-
-    const { data: recentStreams } = await supabase
-        .from('activity_streams')
-        .select('*')
-        .in('activity_id', activityIds)
-
-    const activitesWithStreams = recentActivities.map(activity => ({
-        ...activity,
-        stream: recentStreams.find(stream => stream.activity_id === activity.id)
-    }));
-
-    res.json(computeCardiacDrift(activitesWithStreams));
-
-});
-
-router.get('/test-spike', async (req, res) => {
+router.get('/chd', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { data: activities } = await supabase
         .from('activities')
-        .select('*');
+        .select('*')
+        .eq('user_id', req.userId);
+    
+    const result = computeConsecutiveHardDays(activities);
+    res.json(result);
+});
+
+router.get('/efficiency-trend', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { results } = await getEFResults(req.userId)
+    res.json(results)
+  })
+
+  router.get('/ef-summary', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { results, recentActivities } = await getEFResults(req.userId)
+
+    const qualifying = results.filter(r =>
+        r.effortLevel === 'easy' || r.effortLevel === 'moderate')
+
+    if (qualifying.length === 0) {
+        return res.json({
+            currentEF: 0,
+            pctChange: 0,
+            totalRuns: recentActivities.length,
+            qualifyingRuns: 0,
+            dateRange: null,
+            dataPoints: []
+        })
+    }
+
+    const firstDate = new Date(qualifying[0].date)
+    const lastDate = new Date(qualifying[qualifying.length - 1].date)
+
+    const firstWindowEnd = new Date(firstDate)
+    firstWindowEnd.setDate(firstWindowEnd.getDate() + 14)
+
+    const lastWindowStart = new Date(lastDate)
+    lastWindowStart.setDate(lastWindowStart.getDate() - 14)
+
+    const firstWindow = qualifying.filter(run => {
+        const runDate = new Date(run.date)
+        return runDate <= firstWindowEnd
+    })
+
+    const lastWindow = qualifying.filter(run => {
+        const runDate = new Date(run.date)
+        return runDate >= lastWindowStart
+    })
+
+    const firstAvg = firstWindow.reduce((sum, run) => sum + run.efValue, 0) / firstWindow.length
+    const lastAvg = lastWindow.reduce((sum, run) => sum + run.efValue, 0) / lastWindow.length
+    const pctChange = Math.round(((lastAvg - firstAvg) / firstAvg) * 10000) / 100
+    const currentEF = qualifying[qualifying.length - 1]?.efValue ?? 0
+
+    res.json({
+      currentEF,
+      pctChange,
+      totalRuns: recentActivities.length,
+      qualifyingRuns: qualifying.length,
+      dateRange: {
+        start: results[0].date,
+        end: results[results.length - 1].date
+      },
+      dataPoints: results.map(r => ({
+        date: r.date,
+        efValue: r.efValue,
+        effortLevel: r.effortLevel
+      }))
+    })
+  })
+
+router.get('/spike', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: activities } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('user_id', req.userId);
+
     
     const result = computeSingleSessionSpike(activities);
     res.json(result);
 });
+
+// for training page
+router.get('/feed', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
+        .from('users')
+        .select('resting_hr, max_hr')
+        .eq('id', req.userId)
+        .single();
+
+    const { data: allActivities } = await supabase
+        .from('activities')
+        .select('average_heartrate')
+        .eq('user_id', req.userId);
+
+    const hrrThresholds = computeHrrBaselines(allActivities, user.resting_hr, user.max_hr)
+
+    const { results, activitiesWithStreams, baselines } = await getEFResults(req.userId)
+
+    const MAX_REASONABLE_PACE_SECONDS = 20 * 60;
+
+    const feed = activitiesWithStreams.map(activity => {
+      const efResult = results.find(r => r.activityId === activity.id)
+      const drift = computeRunDrift(activity, user.resting_hr, user.max_hr)
+
+      const paceSecondsPerMile = activity.average_speed > 0
+        ? 1609.34 / activity.average_speed
+        : null
+
+      const avgPaceSeconds = paceSecondsPerMile !== null && paceSecondsPerMile <= MAX_REASONABLE_PACE_SECONDS
+        ? Math.round(paceSecondsPerMile)
+        : null
+
+      const effortLevel = activity.average_heartrate
+        ? classifyEffortByHRR(activity.average_heartrate, user.resting_hr, user.max_hr, hrrThresholds)
+        : null
+
+      return {
+        activityId: activity.id,
+        stravaId: activity.strava_id,
+        stravaUrl: `https://www.strava.com/activities/${activity.strava_id}`,
+        name: activity.name,
+        date: activity.start_date,
+        distance: activity.distance,
+        duration: activity.duration,
+        avgPaceSeconds,
+        avgHeartrate: activity.average_heartrate ?? null,
+        efValue: efResult?.efValue ?? null,
+        effortLevel,
+        drift: drift.viable ? drift.drift : null,
+        driftFlag: drift.viable ? drift.flag : null
+      }
+    })
+
+    res.json(feed.sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    ))
+  })
 
 export default router
