@@ -5,6 +5,10 @@ export type Baselines = {
 }
 
 export const checkCalibration = (activities) => {
+    if (activities.length === 0) {
+        return { isCalibrated: false, daysSinceFirst: 0, activityCount: 0 }
+    }
+
     // Gets oldest activity
     const oldest = activities.reduce((earliest, activity) =>
     new Date(activity.start_date) < new Date(earliest.start_date) ? activity : earliest);
@@ -30,6 +34,10 @@ export const computeBaselines = (activities) => {
     const scores = activities
         .filter(activity => activity.suffer_score !== null)
         .map(activity => activity.suffer_score)
+
+    if (scores.length === 0) {
+        return { easyThreshold: 0, moderateThreshold: 0, hardThreshold: 0 }
+    }
 
     // Getting standard deviation of suffer scores
     const scoresMean = scores.reduce((sum, score) => sum + score, 0) / scores.length;

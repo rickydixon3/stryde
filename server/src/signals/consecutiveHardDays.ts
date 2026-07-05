@@ -77,7 +77,7 @@ const getSeverity  = (streak: number) => {
     if (streak === 1) return {severity: 1, flag: 'low'}
     if (streak === 2) return {severity: 2, flag: 'elevated'}
     if (streak === 3) return {severity: 3, flag: 'high'}
-    return { severity: 4, flag: 'critical '}
+    return { severity: 4, flag: 'critical'}
 }
 
 export const computeConsecutiveHardDays = (activities: any[]) => {
@@ -95,25 +95,25 @@ export const computeConsecutiveHardDays = (activities: any[]) => {
 
     let currentHardStreak = 0;
     let longestHardstreak = 0;
-    let hardDayCount = 0;
+    let highLoadDayCount = 0;
 
     for (const day of dayPattern) {
         if (day === 'hard' || day === 'very_hard') {
             currentHardStreak++;
             longestHardstreak = Math.max(currentHardStreak, longestHardstreak);
-            hardDayCount++;
+            highLoadDayCount++;
         } else {
             currentHardStreak = 0;
         }
     }
 
-    let lastHardDay: string | null = null;
+    let lastHighLoadDay: string | null = null;
 
     for (let i = 0; i < dayPattern.length; i++) {
         if (dayPattern[i] === 'hard' || dayPattern[i] === 'very_hard') {
             const date = new Date();
             date.setDate(date.getDate() - i);
-            lastHardDay = date.toDateString();
+            lastHighLoadDay = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
             break;
         }
     }
@@ -123,9 +123,9 @@ export const computeConsecutiveHardDays = (activities: any[]) => {
     return {
         severity: severity,
         flag: flag,
-        hardDayCount: hardDayCount,        
+        highLoadDayCount: highLoadDayCount,        
         consecutiveCount: longestHardstreak,    
-        lastHardDay: lastHardDay,         
+        lastHighLoadDay: lastHighLoadDay,         
         pattern: dayPattern.join(' → '),            
         recentDays: dayPattern            
     }
