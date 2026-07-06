@@ -1,4 +1,4 @@
-const API_BASE = ''
+const API_BASE = 'https://stryde-production-2f0b.up.railway.app'
 
 export const apiFetch = async (path: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token')
