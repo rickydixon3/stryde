@@ -1,7 +1,7 @@
 export default function Landing() {
-    const handleConnect = () => {
-      window.location.href = 'https://stryde-production-2f0b.up.railway.app/auth/strava'
-    }
+  const handleConnect = () => {
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/strava`
+  }
   
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">

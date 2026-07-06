@@ -1,4 +1,4 @@
-const API_BASE = 'https://stryde-production-2f0b.up.railway.app'
+const API_BASE = import.meta.env.VITE_API_URL
 
 export const apiFetch = async (path: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token')
