@@ -3,8 +3,8 @@ interface SessionSpikeData {
   reason?: string
   flag?: string
   spikePercentage?: number
-  longestWeekRun?: { name: string; distance: number; date: string }
-  longestMonthRun?: { name: string; distance: number; date: string }
+  spikeRun?: { name: string; distance: number; date: string }
+  baselineRun?: { name: string; distance: number; date: string }
 }
 
 interface Props {
@@ -55,12 +55,14 @@ function SessionSpikeCard({ data }: Props) {
         <p className="text-sm text-[#888888] mt-1">
           {isClear
             ? 'No outlier sessions detected'
-            : `${data.longestWeekRun!.name} · ${data.longestWeekRun!.distance}mi`}
+            : `${data.spikeRun!.name} · ${data.spikeRun!.distance}mi`}
         </p>
       </div>
 
       <p className="text-xs text-[#555555] mt-auto">
-        Longest this week: {data.longestWeekRun!.distance}mi · monthly baseline: {data.longestMonthRun!.distance}mi
+        {isClear
+          ? 'Based on your trailing 30-day longest run'
+          : `Compared to your ${data.baselineRun!.distance}mi longest run in the prior 30 days`}
       </p>
 
     </div>
