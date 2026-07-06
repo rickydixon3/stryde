@@ -2,3 +2,4 @@ node_modules/
 dist/
 .env
 server/compare_ef.json
+server/src/scripts/compare_ef.json
