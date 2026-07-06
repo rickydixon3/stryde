@@ -119,7 +119,7 @@ function CardiacDriftCard({ data }: Props) {
           <DriftSparkline
             efFirstHalf={data.mostRecentRun.efFirstHalf}
             efLastHalf={data.mostRecentRun.efLastHalf}
-            flag={data.flag}
+            flag={data.flag ?? 'stable'}
           />
         </div>
       )}

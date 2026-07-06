@@ -19,8 +19,6 @@ interface FeedRun {
   avgHeartrate: number | null
 }
 
-const linkOpenTag = "a"
-
 const effortBadgeClass: Record<string, string> = {
   easy: 'bg-[#0a2010] text-[#4ade80]',
   moderate: 'bg-[#0a1a2a] text-[#38bdf8]',
@@ -106,7 +104,6 @@ export default function Training() {
                 ? "grid grid-cols-[1fr_65px_65px_60px_60px_85px_60px_130px_28px] gap-3 px-4 py-3 items-center bg-[#161616]"
                 : "grid grid-cols-[1fr_65px_65px_60px_60px_85px_60px_130px_28px] gap-3 px-4 py-3 items-center bg-[#161616] border-b border-[#1f1f1f]"
 
-              const linkOpenTag = "a"
 
               return (
                 <div key={run.activityId} className={rowClass}>
