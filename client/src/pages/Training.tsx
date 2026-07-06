@@ -19,6 +19,8 @@ interface FeedRun {
   avgHeartrate: number | null
 }
 
+const linkOpenTag = "a"
+
 const effortBadgeClass: Record<string, string> = {
   easy: 'bg-[#0a2010] text-[#4ade80]',
   moderate: 'bg-[#0a1a2a] text-[#38bdf8]',

@@ -28,8 +28,6 @@ const DriftSparkline = ({ efFirstHalf, efLastHalf, flag }: { efFirstHalf: number
     significant: '#ef4444'
   }[flag] ?? '#555555'
 
-  // Y positions flipped (SVG y grows downward): higher EF sits higher on
-  // screen, so we invert relative to the two values' own range.
   const max = Math.max(efFirstHalf, efLastHalf)
   const min = Math.min(efFirstHalf, efLastHalf)
   const range = max - min || 1

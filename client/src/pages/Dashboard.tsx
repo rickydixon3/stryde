@@ -38,8 +38,8 @@ interface ChdData {
         name: string
         date: string
         drift: number
-        efFirst20: number
-        efLast20: number
+        efFirstHalf: number
+        efLastHalf: number
     } | null
   }
   
@@ -103,7 +103,7 @@ export default function Dashboard() {
           {/* Page header */}
           <div className="mb-6">
             <h1 className="text-lg font-medium text-[#ededed]">Running efficiency</h1>
-            <p className="text-sm text-[#888888] mt-0.5">Last 60 days · {efSummary.totalRuns} runs</p>
+            <p className="text-sm text-[#888888] mt-0.5">Last 60 days · {efSummary?.totalRuns} runs</p>
           </div>
       
           {/* EF Chart card */}
