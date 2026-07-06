@@ -10,7 +10,7 @@ const router = Router();
 router.get('/strava', (req, res) => {
     const baseURL = 'https://www.strava.com/oauth/authorize';
     const clientID = process.env.STRAVA_CLIENT_ID;
-    const redirectURI = 'http://localhost:3000/auth/strava/callback';
+    const redirectURI = 'https://stryde-production-2f0b.up.railway.app/auth/strava/callback';
     const responseType = 'code';
     const scope =  'activity:read_all,profile:read_all'
 
@@ -89,7 +89,7 @@ router.get('/strava/callback', async (req, res) => {
         { expiresIn: '7d' }
     );
 
-    res.redirect(`http://localhost:5173/callback?token=${appToken}`);
+    res.redirect(`https://stryde-iota.vercel.app/callback?token=${appToken}`);
 });
 
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {

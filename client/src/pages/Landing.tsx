@@ -1,6 +1,6 @@
 export default function Landing() {
     const handleConnect = () => {
-      window.location.href = 'http://localhost:3000/auth/strava'
+      window.location.href = 'https://stryde-production-2f0b.up.railway.app/auth/strava'
     }
   
     return (
