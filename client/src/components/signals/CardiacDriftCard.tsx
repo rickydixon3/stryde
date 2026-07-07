@@ -38,12 +38,17 @@ const DriftSparkline = ({ efFirstHalf, efLastHalf, flag }: { efFirstHalf: number
 
   return (
     <div className="mt-2">
+      <div className="flex justify-center mt-0.5">
+        <span className="text-[10px] text-[#555555]">efficiency across run</span>
+      </div>
       <svg className="w-full h-11 block" viewBox="0 0 260 44" preserveAspectRatio="none">
         <line x1="0" y1="34" x2="260" y2="34" stroke="#1f1f1f" strokeWidth="1" />
         <line x1="16" y1={y1} x2="244" y2={y2} stroke={severityColor} strokeWidth="2" />
         <circle cx="16" cy={y1} r="4" fill="#161616" stroke={severityColor} strokeWidth="2" />
         <circle cx="244" cy={y2} r="4" fill={severityColor} stroke="#161616" strokeWidth="1" />
       </svg>
+
+
       <div className="flex justify-between mt-0.5">
         <span className="text-[10px] text-[#555555]">first half</span>
         <span className="text-[10px] text-[#555555]">last half</span>
@@ -93,7 +98,7 @@ function CardiacDriftCard({ data }: Props) {
 
       <div className="flex justify-between items-center mb-4">
         <p className="text-xs text-[#888888] uppercase tracking-wide">
-          Cardiac drift · last run
+          Cardiac drift
         </p>
         <span className={`text-xs px-2 py-0.5 rounded font-medium ${badge.class}`}>
           {badge.label}

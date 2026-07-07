@@ -76,14 +76,15 @@ router.get('/cardiac-drift', requireAuth, async (req: AuthenticatedRequest, res)
 });
 
 router.get('/chd', requireAuth, async (req: AuthenticatedRequest, res) => {
-    const { data: activities } = await supabase
-        .from('activities')
-        .select('*')
-        .eq('user_id', req.userId);
-    
-    const result = computeConsecutiveHardDays(activities);
-    res.json(result);
-});
+  const { data: activities } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('user_id', req.userId);
+
+  const baselines = computeBaselines(activities);
+  const result = computeConsecutiveHardDays(activities, baselines);
+  res.json(result);
+});3
 
 router.get('/efficiency-trend', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { results } = await getEFResults(req.userId)

@@ -21,10 +21,13 @@ interface ChdData {
   flag: string
   highLoadDayCount: number
   consecutiveCount: number
+  isActive: boolean
   lastHighLoadDay: string
+  lastHighLoadDayISO: string | null
   pattern: string
   recentDays: string[]
 }
+
   interface CardiacDriftData {
     viable: boolean
     averageDrift: number
@@ -121,9 +124,9 @@ export default function Dashboard() {
           {/* Signal cards */}
           <p className="text-xs text-[#888888] uppercase tracking-wide mb-3">Signals</p>
           <div className="grid grid-cols-3 gap-3">
+            {cardiacData && <CardiacDriftCard data={cardiacData}/>}
             {chdData && <CHDCard data={chdData}/>}
             {spikeData && <SessionSpikeCard data={spikeData}/>}
-            {cardiacData && <CardiacDriftCard data={cardiacData}/>}
           </div>
       
         </div>

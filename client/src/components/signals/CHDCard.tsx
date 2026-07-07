@@ -3,7 +3,9 @@ interface ChdData {
   flag: string
   highLoadDayCount: number
   consecutiveCount: number
+  isActive: boolean
   lastHighLoadDay: string
+  lastHighLoadDayISO: string | null
   pattern: string
   recentDays: string[]
 }
@@ -13,9 +15,15 @@ interface Props {
 }
 
 function CHDCard({ data }: Props) {
-  const isWatch = data.consecutiveCount >= 2
-  const badgeLabel = isWatch ? 'WATCH' : 'CLEAR'
-  const badgeClass = isWatch
+  const hasStreak = data.consecutiveCount >= 2
+  const isActive = data.isActive
+
+  const daysSinceLastHighLoad = data.lastHighLoadDayISO
+    ? Math.floor((new Date().getTime() - new Date(data.lastHighLoadDayISO).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+
+  const badgeLabel = hasStreak && isActive ? 'WATCH' : 'CLEAR'
+  const badgeClass = hasStreak && isActive
     ? 'bg-[#2a1a00] text-[#f59e0b]'
     : 'bg-[#0a2010] text-[#4ade80]'
 
@@ -32,13 +40,22 @@ function CHDCard({ data }: Props) {
       </div>
 
       <div className="mb-3">
-      <span className="text-2xl font-medium text-[#ededed]">
-      {data.consecutiveCount === 0 ? '—' : `${data.consecutiveCount} high-load days in\u00A0a\u00A0row`}
-        </span>
+        {data.consecutiveCount === 0 ? (
+          <span className="text-2xl font-medium text-[#ededed]">—</span>
+        ) : isActive ? (
+          <span className="text-2xl font-medium text-[#ededed]">
+            {data.consecutiveCount} high-load days in{'\u00A0'}a{'\u00A0'}row
+          </span>
+        ) : (
+          <span className="text-2xl font-medium text-[#ededed]">All clear</span>
+        )}
+
         <p className="text-sm text-[#888888] mt-1">
           {data.consecutiveCount === 0
             ? 'No high-load days in a row'
-            : `Last high-load day · ${data.lastHighLoadDay}`}
+            : isActive
+              ? `Last high-load day · ${data.lastHighLoadDay}`
+              : `Recovered from a ${data.consecutiveCount}-day high load streak, ${daysSinceLastHighLoad} days ago (${data.lastHighLoadDay})`}
         </p>
       </div>
 
@@ -48,8 +65,6 @@ function CHDCard({ data }: Props) {
       <p className="text-[12px] text-[#444444] mt-1">
         Based on Strava suffer score
       </p>
-
-      
 
     </div>
   )

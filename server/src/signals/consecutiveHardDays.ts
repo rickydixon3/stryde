@@ -1,46 +1,10 @@
-/**
- * Consecutive Hard Day Detection
- *
- * Uses Strava's suffer score to detect patterns of accumulated training stress
- * over a 10-day window. Research shows 7-14 days is the range where consecutive
- * hard efforts begin producing measurable overreaching effects and impaired performance.
- *
- * Day Classification (based on suffer score):
- *   No activity logged  → 'rest'
- *   suffer_score < 25   → 'easy'
- *   suffer_score 25-50  → 'moderate'
- *   suffer_score 50-75  → 'hard'
- *   suffer_score > 75   → 'very_hard'
- *
- * Note: If multiple runs are logged on the same day, suffer scores are summed
- * to reflect total daily training stress.
- *
- * Severity Levels (based on longest consecutive hard streak):
- *   0 → none     — no consecutive hard days detected3
- *   1 → low      — 1 hard day, no pattern concern
- *   2 → elevated — 2 consecutive hard days, insufficient recovery
- *   3 → high     — 3 consecutive hard days, significant accumulated stress
- *   4 → critical — 4+ consecutive hard days, overreaching territory
- *
- * Returns:
- *   severity      — numeric severity score (0-4)
- *   flag          — plain language label for Claude ('none' | 'low' | 'elevated' | 'high' | 'critical')
- *   hardDayCount  — total hard/very_hard days in the 10-day window (not just consecutive)
- *   consecutiveCount — longest consecutive hard day streak
- *   lastHardDay   — date of most recent hard effort
- *   pattern       — readable string of the 10-day pattern e.g. "hard → rest → very_hard → easy"
- *   recentDays    — raw classified array of the last 10 days
- */
-
-import { checkCalibration, computeBaselines } from "../utils/baselines";
-import { Baselines } from '../utils/baselines';
-
-
-const POPULATION_THRESHOLDS = {
-    easyThreshold: 25,
-    moderateThreshold: 50,
-    hardThreshold: 75
+export interface Baselines {
+    easyThreshold: number;
+    moderateThreshold: number;
+    hardThreshold: number;
 }
+
+const ACTIVE_WINDOW_DAYS = 2;
 
 const classify = (sufferScore: number, baselines: Baselines): string => {
     if (sufferScore < baselines.easyThreshold) return 'easy';
@@ -49,49 +13,64 @@ const classify = (sufferScore: number, baselines: Baselines): string => {
     return 'very_hard';
 }
 
-const classifyDays = (recentActivities: any[], baselines: Baselines) => {
-    const classifiedDays = []
-    let matchingActivities;
+/**
+ * Classifies the last 10 days as hard/very_hard/moderate/easy/rest,
+ * based on summed daily suffer scores (accounts for multiple runs per day).
+ */
+const classifyDays = (activities: any[], baselines: Baselines): string[] => {
+    const dayPattern: string[] = [];
 
     for (let i = 0; i < 10; i++) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
+        const dateStr = date.toDateString();
 
-        matchingActivities = recentActivities.filter(activity => 
-            new Date(activity.start_date).toDateString() === date.toDateString()
+        const matchingActivities = activities.filter(
+            activity => new Date(activity.start_date).toDateString() === dateStr
         );
 
         if (matchingActivities.length === 0) {
-            classifiedDays.push('rest')
-        } else {
-            const totalSufferScore = matchingActivities.reduce((run, activity) => run + activity.suffer_score, 0);
-            classifiedDays.push(classify(totalSufferScore, baselines));
+            dayPattern.push('rest');
+            continue;
         }
+
+        // If multiple runs are logged on the same day, suffer scores are
+        // summed to reflect total daily training stress — a "high-load day"
+        // measures cumulative load across every run that day, not the
+        // intensity of any single run. Two easy runs can add up to a
+        // high-load day even though neither run was hard on its own.
+        const totalSufferScore = matchingActivities.reduce(
+            (sum, activity) => sum + activity.suffer_score, 0
+        );
+
+        dayPattern.push(classify(totalSufferScore, baselines));
     }
-    return classifiedDays;
+
+    return dayPattern;
 }
 
-const getSeverity  = (streak: number) => {
-    if (streak === 0) return {severity: 0, flag: 'none'}
-    if (streak === 1) return {severity: 1, flag: 'low'}
-    if (streak === 2) return {severity: 2, flag: 'elevated'}
-    if (streak === 3) return {severity: 3, flag: 'high'}
-    return { severity: 4, flag: 'critical'}
+const getSeverity = (streak: number, isActive: boolean) => {
+    if (!isActive || streak === 0) return { severity: 0, flag: 'none' }
+    if (streak === 1) return { severity: 1, flag: 'low' }
+    if (streak === 2) return { severity: 2, flag: 'elevated' }
+    if (streak === 3) return { severity: 3, flag: 'high' }
+    return { severity: 4, flag: 'critical' }
 }
 
-export const computeConsecutiveHardDays = (activities: any[]) => {
-
-    const calibration = checkCalibration(activities);
-    const baselines = calibration.isCalibrated ? computeBaselines(activities) : POPULATION_THRESHOLDS;
-    // Ten days ago
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-    tenDaysAgo.setHours(0, 0, 0, 0);
-
-    // Getting activities from past 10 days
-    const tenDayActivities = activities.filter(activity => new Date(activity.start_date) >= tenDaysAgo);
-    const dayPattern = classifyDays(tenDayActivities, baselines)
+/**
+ * Returns:
+ *   severity            — numeric severity score (0-4), 0 if the streak has resolved
+ *   flag                — plain language label for Claude ('none' | 'low' | 'elevated' | 'high' | 'critical')
+ *   highLoadDayCount     — total high-load days in the 10-day window (not just consecutive)
+ *   consecutiveCount     — longest consecutive high-load day streak found in the window
+ *   isActive             — whether that streak is still recent enough to be relevant (within ACTIVE_WINDOW_DAYS)
+ *   lastHighLoadDay      — human-readable date of most recent high-load day
+ *   lastHighLoadDayISO   — ISO date string of the same, safe for date math
+ *   pattern              — readable string of the 10-day pattern e.g. "hard → rest → very_hard → easy"
+ *   recentDays           — raw classified array of the last 10 days
+ */
+export const computeConsecutiveHardDays = (activities: any[], baselines: Baselines) => {
+    const dayPattern = classifyDays(activities, baselines);
 
     let currentHardStreak = 0;
     let longestHardstreak = 0;
@@ -108,25 +87,33 @@ export const computeConsecutiveHardDays = (activities: any[]) => {
     }
 
     let lastHighLoadDay: string | null = null;
+    let lastHighLoadDayISO: string | null = null;
+    let daysSinceLastHighLoad: number | null = null;
 
     for (let i = 0; i < dayPattern.length; i++) {
         if (dayPattern[i] === 'hard' || dayPattern[i] === 'very_hard') {
             const date = new Date();
             date.setDate(date.getDate() - i);
-            lastHighLoadDay = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+            lastHighLoadDay = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            lastHighLoadDayISO = date.toISOString();
+            daysSinceLastHighLoad = i;
             break;
         }
     }
 
-    const {severity, flag } = getSeverity(longestHardstreak);
+    const isActive = daysSinceLastHighLoad !== null && daysSinceLastHighLoad <= ACTIVE_WINDOW_DAYS;
+
+    const { severity, flag } = getSeverity(longestHardstreak, isActive);
 
     return {
-        severity: severity,
-        flag: flag,
-        highLoadDayCount: highLoadDayCount,        
-        consecutiveCount: longestHardstreak,    
-        lastHighLoadDay: lastHighLoadDay,         
-        pattern: dayPattern.join(' → '),            
-        recentDays: dayPattern            
+        severity,
+        flag,
+        highLoadDayCount,
+        consecutiveCount: longestHardstreak,
+        isActive,
+        lastHighLoadDay,
+        lastHighLoadDayISO,
+        pattern: dayPattern.join(' → '),
+        recentDays: dayPattern
     }
 }
