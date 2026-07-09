@@ -13,25 +13,33 @@ const router = Router();
 
 // SYNCING ACTIVITIES
 router.get('/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
-    const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', req.userId)
-        .single();
+  const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.userId)
+      .single();
 
-    await syncActivities(user);
-    res.json({ message: 'sync complete' });
+  if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+  }
+
+  await syncActivities(user);
+  res.json({ message: 'sync complete' });
 });
 
 router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) => {
-    const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', req.userId)
-        .single();
+  const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.userId)
+      .single();
 
-    await syncStreams(user);
-    res.json({ message: 'streams synced' });
+  if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+  }
+
+  await syncStreams(user);
+  res.json({ message: 'streams synced' });
 });
 
 // Route to test calibrations and baselines
@@ -91,6 +99,10 @@ router.get('/feed', requireAuth, async (req: AuthenticatedRequest, res) => {
       .select('resting_hr, max_hr')
       .eq('id', req.userId)
       .single();
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
 
   const { data: allActivities } = await supabase
       .from('activities')

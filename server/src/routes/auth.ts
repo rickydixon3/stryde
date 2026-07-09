@@ -89,6 +89,10 @@ router.get('/strava/callback', async (req, res) => {
             .single();
             data = result.data;
             error = result.error;
+
+            if (!existingUser || existingUser.length === 0) {
+                return res.status(500).json({ error: 'Expected existing user but found none' });
+            }
             userId = existingUser[0].id;
     }
 
@@ -112,8 +116,8 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
         .eq('id', req.userId)
         .single();
 
-    if (error) {
-        return res.status(500).json({ error: error.message });
+    if (error || !user) {
+        return res.status(404).json({ error: 'User not found' });
     }
 
     res.json(user);
