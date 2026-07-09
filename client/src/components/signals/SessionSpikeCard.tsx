@@ -1,3 +1,4 @@
+// SessionSpikeCard.tsx
 interface SessionSpikeData {
   viable: boolean
   reason?: string
@@ -20,7 +21,7 @@ function SessionSpikeCard({ data }: Props) {
 
   if (!data.viable) {
     return (
-      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col">
+      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
         <div className="flex justify-between items-center mb-4">
           <p className="text-xs text-[#888888] uppercase tracking-wide">
             Session spike
@@ -37,7 +38,7 @@ function SessionSpikeCard({ data }: Props) {
   }
 
   return (
-    <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col">
+    <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
 
       <div className="flex justify-between items-center mb-4">
         <p className="text-xs text-[#888888] uppercase tracking-wide">

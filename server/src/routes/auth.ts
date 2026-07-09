@@ -51,7 +51,8 @@ router.get('/strava/callback', async (req, res) => {
             firstname: tokens.athlete.firstname,
             lastname: tokens.athlete.lastname,
             profile_picture_url: tokens.athlete.profile_medium,
-            created_at: new Date()
+            created_at: new Date(),
+            sync_status: 'syncing',
         }).select().single();
 
         data = result.data;
@@ -59,7 +60,19 @@ router.get('/strava/callback', async (req, res) => {
         userId = data?.id;
 
         if (data) {
-            syncActivities(data).then(() => syncStreams(data));
+            // Fire-and-forget on the HTTP response (the redirect below doesn't
+            // wait for this), but the sync_status column lets the frontend
+            // poll /auth/me and know when it's actually done, rather than
+            // rendering the dashboard against a partially-synced account.
+            syncActivities(data)
+                .then(() => syncStreams(data))
+                .then(() =>
+                    supabase.from('users').update({ sync_status: 'idle' }).eq('id', userId)
+                )
+                .catch((err) => {
+                    console.error('Initial sync failed:', err);
+                    supabase.from('users').update({ sync_status: 'error' }).eq('id', userId);
+                });
         }
 
     } else {
@@ -95,7 +108,7 @@ router.get('/strava/callback', async (req, res) => {
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { data: user, error } = await supabase
         .from('users')
-        .select('onboarding_complete, firstname, lastname, profile_picture_url')
+        .select('onboarding_complete, firstname, lastname, profile_picture_url, sync_status')
         .eq('id', req.userId)
         .single();
 
@@ -126,6 +139,12 @@ router.post('/onboarding', requireAuth, async (req: AuthenticatedRequest, res) =
 
     if (error) {
         return res.status(500).json({ error: error.message });
+    }
+
+    if (user) {
+        syncStreams(user).catch((err) => {
+            console.error('Post-onboarding syncStreams failed:', err);
+        });
     }
 
     res.json(user);

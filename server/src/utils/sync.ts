@@ -1,5 +1,8 @@
 import { supabase } from '../supabase'
 import { getValidAccessToken } from './strava'
+import { computeRunEfficiency } from '../signals/runEfficiency';
+import { computeBaselines } from './baselines';
+import { computeRunDrift } from '../signals/cardiacDrift';
 
 export const syncActivities = async (user: any) => {
     const accessToken = await getValidAccessToken(user);
@@ -50,16 +53,34 @@ export const syncActivities = async (user: any) => {
 }
 
 export const syncStreams = async (user: any) => {
+    const { data: currentUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+    if (!currentUser || currentUser.resting_hr === null || currentUser.max_hr === null) {
+        console.log(`syncStreams: skipping for user ${user.id}, resting_hr/max_hr not set yet (onboarding incomplete)`);
+        return;
+    }
+
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-    const accessToken = await getValidAccessToken(user);
+    const accessToken = await getValidAccessToken(currentUser);
 
     const { data: recentActivities } = await supabase
         .from('activities')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .gte('start_date', sixtyDaysAgo.toISOString());
+
+    const { data: allActivities } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('user_id', currentUser.id);
+
+    const baselines = computeBaselines(allActivities ?? []);
 
     for (const activity of recentActivities) {
         const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=time,heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
@@ -69,33 +90,55 @@ export const syncStreams = async (user: any) => {
             }
         });
         const streamData = await response.json();
-        
-        await supabase.from('activity_streams').upsert({
-            activity_id: activity.id,
-            time: streamData.time?.data ?? null,
-            heartrate: streamData.heartrate?.data ?? null,
-            cadence: streamData.cadence?.data ?? null,
-            velocity: streamData.velocity_smooth?.data ?? null,
-            altitude: streamData.altitude?.data ?? null
-        }, { onConflict: 'activity_id' });
-    }
 
-    const { data: staleActivities } = await supabase
-        .from('activities')
-        .select('id')
-        .eq('user_id', user.id)
-        .lt('start_date', sixtyDaysAgo.toISOString());
+        const activityWithStream = {
+            ...activity,
+            stream: {
+                time: streamData.time?.data ?? null,
+                heartrate: streamData.heartrate?.data ?? null,
+                cadence: streamData.cadence?.data ?? null,
+                velocity: streamData.velocity_smooth?.data ?? null,
+                altitude: streamData.altitude?.data ?? null,
+            },
+        };
 
-    const staleActivityIds = staleActivities.map(a => a.id);
+        const efResult = computeRunEfficiency(
+            activityWithStream,
+            currentUser.resting_hr,
+            currentUser.max_hr,
+            baselines
+        );
 
-    if (staleActivityIds.length > 0) {
-        const { error: deleteError } = await supabase
-            .from('activity_streams')
-            .delete()
-            .in('activity_id', staleActivityIds);
+        const driftResult = computeRunDrift(
+            activityWithStream,
+            currentUser.resting_hr,
+            currentUser.max_hr
+        );
 
-        if (deleteError) {
-            console.log('Prune error:', deleteError.message);
+        const updatePayload: Record<string, number | string | null> = {
+            ef_value: null,
+            effort_level: null,
+            drift_percent: null,
+            drift_flag: null,
+            ef_first_half: null,
+            ef_last_half: null,
+        };
+
+        if (efResult.viable) {
+            updatePayload.ef_value = efResult.efValue;
+            updatePayload.effort_level = efResult.effortLevel;
         }
+
+        if (driftResult.viable) {
+            updatePayload.drift_percent = driftResult.drift;
+            updatePayload.drift_flag = driftResult.flag;
+            updatePayload.ef_first_half = driftResult.efFirstHalf;
+            updatePayload.ef_last_half = driftResult.efLastHalf;
+        }
+
+        await supabase
+            .from('activities')
+            .update(updatePayload)
+            .eq('id', activity.id);
     }
 }

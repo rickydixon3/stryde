@@ -125,7 +125,7 @@ export default function EFTrendChart({ data, windowDays, rollingWindow, onTrendC
   return (
     <div style={{ width: '100%', height: 260 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
+      <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 1, left: 20 }}>
           <defs>
             <linearGradient id="efGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={LINE_COLOR} stopOpacity={0.45} />

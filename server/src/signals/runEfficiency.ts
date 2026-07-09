@@ -38,7 +38,40 @@ export const classifyEffortByHRR = (avgHeartrate: number, restingHr: number, max
     return 'hard'
 }
 
-export const computeRunEfficiency = (activity, restingHr: number, maxHr: number, baselines: Baselines) => {
+export interface RunEfficiencyInput {
+    id: string | number;
+    start_date: string;
+    suffer_score: number;
+    stream?: {
+        heartrate?: number[];
+        velocity?: number[];
+        altitude?: number[];
+        time?: number[];
+    };
+}
+
+export interface RunEfficiencyNotViable {
+    viable: false;
+    reason: string;
+}
+
+export interface RunEfficiencyViable {
+    viable: true;
+    efValue: number;
+    sampleSize: number;
+    date: string;
+    activityId: string | number;
+    effortLevel: string;
+}
+
+export type RunEfficiencyResult = RunEfficiencyNotViable | RunEfficiencyViable;
+
+export const computeRunEfficiency = (
+    activity: RunEfficiencyInput,
+    restingHr: number,
+    maxHr: number,
+    baselines: Baselines
+): RunEfficiencyResult => {
 
     if (!activity.stream || !activity.stream.heartrate || !activity.stream.velocity || !activity.stream.altitude || !activity.stream.time) {
         return { viable: false, reason: 'no HR, velocity, altitude, or time data' };
@@ -51,7 +84,7 @@ export const computeRunEfficiency = (activity, restingHr: number, maxHr: number,
     );
 
     const cleaned = gapVelocity
-        .map((v, i) => ({ velocity: v, heartrate: activity.stream.heartrate[i] }))
+        .map((v, i) => ({ velocity: v, heartrate: activity.stream!.heartrate![i] }))
         .filter(point => point.velocity > MOVING_THRESHOLD);
 
     if (cleaned.length === 0) {

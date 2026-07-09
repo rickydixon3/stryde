@@ -2,6 +2,15 @@ import { computeGradeAdjustedVelocity } from "../utils/gradeAdjustedPace";
 
 const MOVING_THRESHOLD = 1.33; // m/s, ~20 min/mile - filters out stops, not real running
 
+// Single shared threshold classifier -- was previously duplicated inside both
+// computeRunDrift and computeCardiacDrift; now defined once and reused
+// everywhere, including the new post-migration aggregation function below.
+export const getFlag = (d: number): string => {
+  if (d < 5) return 'stable'
+  if (d < 10) return 'moderate'
+  return 'significant'
+}
+
 // Function for single runs
 export const computeRunDrift = (activity, restingHr: number, maxHr: number) => {
   if (!activity.stream || !activity.stream.heartrate || !activity.stream.velocity || !activity.stream.altitude || !activity.stream.time) {
@@ -48,13 +57,7 @@ export const computeRunDrift = (activity, restingHr: number, maxHr: number) => {
     const efFirstHalf = velFirstHalfAvg / hrrFirstHalf
     const efLastHalf = velLastHalfAvg / hrrLastHalf
     const drift = ((efFirstHalf - efLastHalf) / efFirstHalf) * 100
-  
-    const getFlag = (d: number) => {
-      if (d < 5) return 'stable'
-      if (d < 10) return 'moderate'
-      return 'significant'
-    }
-  
+
     return {
       viable: true,
       drift: Math.round(drift * 10) / 10,
@@ -64,7 +67,10 @@ export const computeRunDrift = (activity, restingHr: number, maxHr: number) => {
     }
   }
 
-// Function for batch of runs
+  
+
+// Function for batch of runs -- still used by the backfill script and
+// syncStreams, which still operate on raw stream data at compute time.
 export const computeCardiacDrift = (activitiesWithStreams, restingHr: number, maxHr: number) => {
     let totalDrift = 0
     let validRunCount = 0
@@ -99,12 +105,6 @@ export const computeCardiacDrift = (activitiesWithStreams, restingHr: number, ma
   
     const averageDrift = totalDrift / validRunCount
   
-    const getFlag = (d: number): string => {
-      if (d < 5) return 'stable'
-      if (d < 10) return 'moderate'
-      return 'significant'
-    }
-  
     return {
       viable: true,
       averageDrift: Math.round(averageDrift * 10) / 10,
@@ -123,3 +123,52 @@ export const computeCardiacDrift = (activitiesWithStreams, restingHr: number, ma
       } : null
     }
   }
+
+// Aggregates ALREADY-COMPUTED drift values (post-migration shape, where
+// drift_percent/drift_flag/ef_first_half/ef_last_half already exist as
+// columns on `activities`), rather than computing drift from raw streams.
+// Used by the post-migration /cardiac-drift route, which no longer has
+// access to activity_streams at all.
+interface PrecomputedDriftActivity {
+  name: string;
+  start_date: string;
+  drift_percent: number;
+  ef_first_half?: number | null;
+  ef_last_half?: number | null;
+}
+
+export const aggregateDriftValues = (activities: PrecomputedDriftActivity[]) => {
+  const viable = activities.filter(a => a.drift_percent !== null && a.drift_percent !== undefined);
+
+  if (viable.length === 0) {
+    return { viable: false, reason: 'No runs with heart rate and velocity data in the last 7 days' };
+  }
+
+  const averageDrift = viable.reduce((sum, a) => sum + a.drift_percent, 0) / viable.length;
+
+  const sortedByRecency = [...viable].sort(
+    (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+  );
+  const mostRecent = sortedByRecency[0];
+
+  const sortedByWorst = [...viable].sort((a, b) => b.drift_percent - a.drift_percent);
+  const worst = sortedByWorst[0];
+
+  return {
+    viable: true,
+    averageDrift: Math.round(averageDrift * 10) / 10,
+    flag: getFlag(averageDrift),
+    worstRun: {
+      name: worst.name,
+      date: worst.start_date,
+      drift: worst.drift_percent,
+    },
+    mostRecentRun: {
+      name: mostRecent.name,
+      date: mostRecent.start_date,
+      drift: mostRecent.drift_percent,
+      efFirstHalf: mostRecent.ef_first_half ?? null,
+      efLastHalf: mostRecent.ef_last_half ?? null,
+    },
+  };
+};
