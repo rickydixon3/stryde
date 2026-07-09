@@ -86,17 +86,25 @@ export default function Dashboard() {
         let pollTimer: ReturnType<typeof setTimeout>
 
         const checkSyncStatus = () => {
-            apiFetch('/auth/me')
-                .then(res => res.json())
-                .then(user => {
-                    if (cancelled) return
-                    setSyncStatus(user.sync_status)
-
-                    if (user.sync_status === 'syncing') {
-                        pollTimer = setTimeout(checkSyncStatus, SYNC_POLL_INTERVAL_MS)
-                    }
-                })
-        }
+          apiFetch('/auth/me')
+              .then(res => {
+                  if (res.status === 404) {
+                      console.log('>>> 404 REDIRECT LOGIC FIRING <<<')
+                      localStorage.removeItem('token')
+                      window.location.href = '/'
+                      return null
+                  }
+                  return res.json()
+              })
+              .then(user => {
+                  if (cancelled || !user) return
+                  setSyncStatus(user.sync_status)
+      
+                  if (user.sync_status === 'syncing') {
+                      pollTimer = setTimeout(checkSyncStatus, SYNC_POLL_INTERVAL_MS)
+                  }
+              })
+      }
 
         checkSyncStatus()
 

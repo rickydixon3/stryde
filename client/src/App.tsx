@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Training from './pages/Training'
-import Insights from './pages/Insights'
 import Settings from './pages/Settings'
 import Onboarding from './pages/Onboarding'
 import Layout from './components/Layout'
@@ -17,7 +16,6 @@ function App() {
     <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
       <Route path="/" element={<Dashboard />} />
       <Route path="/training" element={<Training />} />
-      <Route path="/insights" element={<Insights />} />
       <Route path="/settings" element={<Settings />} />
     </Route>
     <Route path="/callback" element={<Callback />} />

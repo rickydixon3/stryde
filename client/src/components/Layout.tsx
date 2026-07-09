@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Dumbbell, BarChart2, Settings } from 'lucide-react'
+import { LayoutDashboard, Dumbbell, Settings } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { LogoLockup } from './Logo'
 
@@ -15,8 +15,19 @@ export default function Layout() {
 
   useEffect(() => {
     apiFetch('/auth/me')
-      .then(res => res.json())
-      .then(data => setUser(data))
+      .then(res => {
+        if (res.status === 404) {
+          console.log('>>> 404 REDIRECT LOGIC FIRING <<<')
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return null
+        }
+        return res.json()
+      })
+      .then(data => {
+        if (!data) return
+        setUser(data)
+      })
   }, [])
 
   return (
@@ -50,15 +61,6 @@ export default function Layout() {
           }>
             <Dumbbell size={15} />
             Training
-          </NavLink>
-
-          <NavLink to="/insights" className={({ isActive }) =>
-            isActive
-              ? "flex items-center gap-2.5 px-2 py-1.5 rounded text-sm bg-[#1f1f1f] text-[#ededed] font-medium"
-              : "flex items-center gap-2.5 px-2 py-1.5 rounded text-sm text-[#888888] hover:bg-[#1f1f1f] hover:text-[#ededed] transition-colors"
-          }>
-            <BarChart2 size={15} />
-            Insights
           </NavLink>
 
           <NavLink to="/settings" className={({ isActive }) =>
