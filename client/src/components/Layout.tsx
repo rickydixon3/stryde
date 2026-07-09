@@ -2,6 +2,7 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { LayoutDashboard, Dumbbell, BarChart2, Settings } from 'lucide-react'
 import { apiFetch } from '../utils/api'
+import { LogoLockup } from './Logo'
 
 interface CurrentUser {
   firstname: string
@@ -25,10 +26,11 @@ export default function Layout() {
       <div className="w-56 border-r border-[#1f1f1f] bg-[#111111] flex flex-col px-3 py-4">
 
         {/* Logo */}
-        <div className="flex items-center gap-2 px-2 mb-6">
-          <div className="w-6 h-6 rounded bg-[#1D9E75]"></div>
-          <span className="font-medium text-[#ededed] text-sm">Stryde</span>
+        {/* Logo */}
+        <div className="px-2 mb-6">
+          <LogoLockup size={24} textClassName="text-sm" />
         </div>
+        
 
         {/* Nav links */}
         <nav className="flex flex-col gap-1">
