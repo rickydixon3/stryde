@@ -346,7 +346,7 @@ export default function Settings() {
       <p className="text-xs text-[#555555] text-center mt-2">
         <a href="/privacy" className="hover:underline">Privacy Policy</a>
         {' · '}
-        <a href="mailto:awesomericky8@gmail.com" className="hover:underline">Contact support</a>
+        <a href="mailto:stryde.application@gmail.com" className="hover:underline">Contact support</a>
       </p>
 
     </div>
