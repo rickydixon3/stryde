@@ -88,76 +88,78 @@ export default function Training() {
         <div key={group.label} className="mb-6">
           <p className="text-xs text-[#888888] uppercase tracking-wide mb-2">{group.label}</p>
 
-          <div className="border border-[#1f1f1f] rounded-lg overflow-hidden">
-            <div className={`grid ${GRID_COLUMNS} gap-3 px-4 py-2 bg-[#111111] text-xs text-[#555555] uppercase tracking-wide`}>
-              <span>Run</span>
-              <span>Date</span>
-              <span>Distance</span>
-              <span>Pace</span>
-              <span>HR</span>
-              <span>Effort</span>
-              <span>TRIMP</span>
-              <span>EF</span>
-              <span>Cardiac Drift</span>
-              <span></span>
+          <div className="border border-[#1f1f1f] rounded-lg overflow-x-auto">
+            <div className="min-w-[900px]">
+              <div className={`grid ${GRID_COLUMNS} gap-3 px-4 py-2 bg-[#111111] text-xs text-[#555555] uppercase tracking-wide`}>
+                <span>Run</span>
+                <span>Date</span>
+                <span>Distance</span>
+                <span>Pace</span>
+                <span>HR</span>
+                <span>Effort</span>
+                <span>TRIMP</span>
+                <span>EF</span>
+                <span>Cardiac Drift</span>
+                <span></span>
+              </div>
+
+              {group.runs.map((run, i) => {
+                const isLast = i === group.runs.length - 1
+                const rowClass = isLast
+                  ? `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616]`
+                  : `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616] border-b border-[#1f1f1f]`
+
+
+                return (
+                  <div key={run.activityId} className={rowClass}>
+                    <span className="text-sm text-[#ededed] truncate">{run.name}</span>
+                    <span className="text-sm text-[#888888]">{formatDate(run.date)}</span>
+                    <span className="text-sm text-[#888888]">{formatDistance(run.distance)}</span>
+                    <span className="text-sm text-[#888888]">{formatPace(run.avgPaceSeconds)}</span>
+                    <span className="text-sm text-[#888888]">
+                      {run.avgHeartrate ? `${Math.round(run.avgHeartrate)} bpm` : '—'}
+                    </span>
+
+                    <span>
+                      {run.effortLevel ? (
+                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${effortBadgeClass[run.effortLevel] ?? 'bg-[#1f1f1f] text-[#888888]'}`}>
+                          {run.effortLevel.replace('_', ' ')}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-[#555555]">—</span>
+                      )}
+                    </span>
+
+                    <span className="text-sm text-[#ededed]">
+                      {run.trimpScore !== null ? run.trimpScore.toFixed(0) : '—'}
+                    </span>
+
+                    <span className="text-sm text-[#ededed]">
+                      {run.efValue !== null ? formatEF(run.efValue) : '—'}
+                    </span>
+
+                    <span className="flex items-center gap-1.5">
+                      {run.drift !== null ? (
+                        <>
+                          <span className="text-sm text-[#ededed]">
+                            {run.drift > 0 ? '+' : ''}{run.drift.toFixed(1)}%
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${driftBadgeClass[run.driftFlag!] ?? 'bg-[#1f1f1f] text-[#888888]'}`}>
+                            {run.driftFlag}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-[#555555]">—</span>
+                      )}
+                    </span>
+
+                    <a href={run.stravaUrl} target="_blank" rel="noopener noreferrer" className="text-[#555555] hover:text-[#ededed] transition-colors">
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                )
+              })}
             </div>
-
-            {group.runs.map((run, i) => {
-              const isLast = i === group.runs.length - 1
-              const rowClass = isLast
-                ? `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616]`
-                : `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616] border-b border-[#1f1f1f]`
-
-
-              return (
-                <div key={run.activityId} className={rowClass}>
-                  <span className="text-sm text-[#ededed] truncate">{run.name}</span>
-                  <span className="text-sm text-[#888888]">{formatDate(run.date)}</span>
-                  <span className="text-sm text-[#888888]">{formatDistance(run.distance)}</span>
-                  <span className="text-sm text-[#888888]">{formatPace(run.avgPaceSeconds)}</span>
-                  <span className="text-sm text-[#888888]">
-                    {run.avgHeartrate ? `${Math.round(run.avgHeartrate)} bpm` : '—'}
-                  </span>
-
-                  <span>
-                    {run.effortLevel ? (
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${effortBadgeClass[run.effortLevel] ?? 'bg-[#1f1f1f] text-[#888888]'}`}>
-                        {run.effortLevel.replace('_', ' ')}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-[#555555]">—</span>
-                    )}
-                  </span>
-
-                  <span className="text-sm text-[#ededed]">
-                    {run.trimpScore !== null ? run.trimpScore.toFixed(0) : '—'}
-                  </span>
-
-                  <span className="text-sm text-[#ededed]">
-                    {run.efValue !== null ? formatEF(run.efValue) : '—'}
-                  </span>
-
-                  <span className="flex items-center gap-1.5">
-                    {run.drift !== null ? (
-                      <>
-                        <span className="text-sm text-[#ededed]">
-                          {run.drift > 0 ? '+' : ''}{run.drift.toFixed(1)}%
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${driftBadgeClass[run.driftFlag!] ?? 'bg-[#1f1f1f] text-[#888888]'}`}>
-                          {run.driftFlag}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-[#555555]">—</span>
-                    )}
-                  </span>
-
-                  <a href={run.stravaUrl} target="_blank" rel="noopener noreferrer" className="text-[#555555] hover:text-[#ededed] transition-colors">
-                    <ExternalLink size={14} />
-                  </a>
-                </div>
-              )
-            })}
           </div>
         </div>
       ))}

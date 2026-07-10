@@ -8,6 +8,10 @@ import { AuthenticatedRequest, requireAuth } from '../middleware/requireAuth';
 import { syncActivities, syncStreams } from '../utils/sync';
 import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
 import { computeTrainingLoad } from '../signals/trainingload';
+import { getValidAccessToken } from '../utils/strava';
+import { computeRunDrift } from '../signals/cardiacDrift';
+import { computeRunEfficiency } from '../signals/runEfficiency';
+import { computeTrimp } from '../signals/trimp';
 
 const router = Router();
 
@@ -81,6 +85,102 @@ router.post('/sync-now', requireAuth, async (req: AuthenticatedRequest, res) => 
     } catch (err) {
         console.error('Manual sync failed:', err);
         res.status(500).json({ error: 'Sync failed, please try again' });
+    }
+});
+
+const RECOMPUTE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // once per day
+
+router.post('/recompute-history', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', req.userId)
+        .single();
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.resting_hr || !user.max_hr) {
+        return res.status(400).json({ error: 'Set your resting and max heart rate first' });
+    }
+
+    if (user.last_recompute_at) {
+        const elapsed = Date.now() - new Date(user.last_recompute_at).getTime();
+        if (elapsed < RECOMPUTE_COOLDOWN_MS) {
+            const hoursRemaining = Math.ceil((RECOMPUTE_COOLDOWN_MS - elapsed) / (60 * 60 * 1000));
+            return res.status(429).json({
+                error: 'Please wait before recomputing again',
+                hoursRemaining
+            });
+        }
+    }
+
+    try {
+        const accessToken = await getValidAccessToken(user);
+
+        const { data: allActivities } = await supabase
+            .from('activities')
+            .select('*')
+            .eq('user_id', user.id);
+
+        const baselines = computeBaselines(allActivities ?? []);
+
+        for (const activity of allActivities ?? []) {
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=time,heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const streamData = await response.json();
+
+            const activityWithStream = {
+                ...activity,
+                stream: {
+                    time: streamData.time?.data ?? null,
+                    heartrate: streamData.heartrate?.data ?? null,
+                    cadence: streamData.cadence?.data ?? null,
+                    velocity: streamData.velocity_smooth?.data ?? null,
+                    altitude: streamData.altitude?.data ?? null,
+                },
+            };
+
+            const efResult = computeRunEfficiency(activityWithStream, user.resting_hr, user.max_hr, baselines);
+            const driftResult = computeRunDrift(activityWithStream, user.resting_hr, user.max_hr);
+            const trimpScore = computeTrimp(activity, user.resting_hr, user.max_hr);
+
+            const updatePayload: Record<string, number | string | null> = {
+                ef_value: null, effort_level: null,
+                drift_percent: null, drift_flag: null,
+                ef_first_half: null, ef_last_half: null,
+                trimp_score: null,
+            };
+
+            if (efResult.viable) {
+                updatePayload.ef_value = efResult.efValue;
+                updatePayload.effort_level = efResult.effortLevel;
+            }
+            if (driftResult.viable) {
+                updatePayload.drift_percent = driftResult.drift;
+                updatePayload.drift_flag = driftResult.flag;
+                updatePayload.ef_first_half = driftResult.efFirstHalf;
+                updatePayload.ef_last_half = driftResult.efLastHalf;
+            }
+            if (trimpScore !== null) {
+                updatePayload.trimp_score = trimpScore;
+            }
+
+            await supabase.from('activities').update(updatePayload).eq('id', activity.id);
+        }
+
+        await supabase
+            .from('users')
+            .update({ last_recompute_at: new Date().toISOString() })
+            .eq('id', req.userId);
+
+        res.json({ message: 'History recomputed successfully' });
+    } catch (err) {
+        console.error('Recompute history failed:', err);
+        res.status(500).json({ error: 'Recompute failed, please try again' });
     }
 });
 
