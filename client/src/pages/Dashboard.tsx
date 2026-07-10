@@ -162,7 +162,8 @@ export default function Dashboard() {
 
           <div className="h-3" />
 
-          {/* AI card -- directly below the chart, own independent card <AISynthesis /> */}
+          {/* AI card -- directly below the chart, own independent card  */}
+          <AISynthesis />
         
 
           {/* Signal cards -- equal width, own independent cards */}
