@@ -3,6 +3,7 @@ import { getValidAccessToken } from './strava'
 import { computeRunEfficiency } from '../signals/runEfficiency';
 import { computeBaselines } from './baselines';
 import { computeRunDrift } from '../signals/cardiacDrift';
+import { computeTrimp } from '../signals/trimp';
 
 export const syncActivities = async (user: any) => {
     const accessToken = await getValidAccessToken(user);
@@ -115,6 +116,8 @@ export const syncStreams = async (user: any) => {
             currentUser.max_hr
         );
 
+        const trimpScore = computeTrimp(activity, currentUser.resting_hr, currentUser.max_hr);
+
         const updatePayload: Record<string, number | string | null> = {
             ef_value: null,
             effort_level: null,
@@ -122,6 +125,7 @@ export const syncStreams = async (user: any) => {
             drift_flag: null,
             ef_first_half: null,
             ef_last_half: null,
+            trimp_score: null,
         };
 
         if (efResult.viable) {
@@ -134,6 +138,10 @@ export const syncStreams = async (user: any) => {
             updatePayload.drift_flag = driftResult.flag;
             updatePayload.ef_first_half = driftResult.efFirstHalf;
             updatePayload.ef_last_half = driftResult.efLastHalf;
+        }
+
+        if (trimpScore !== null) {
+            updatePayload.trimp_score = trimpScore;
         }
 
         await supabase

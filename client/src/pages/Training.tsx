@@ -17,6 +17,7 @@ interface FeedRun {
   driftFlag: string | null
   avgPaceSeconds: number | null
   avgHeartrate: number | null
+  trimpScore: number | null
 }
 
 const effortBadgeClass: Record<string, string> = {
@@ -61,6 +62,8 @@ const groupByMonth = (runs: FeedRun[]) => {
   return groups
 }
 
+const GRID_COLUMNS = "grid-cols-[1fr_65px_65px_60px_60px_85px_65px_60px_130px_28px]"
+
 export default function Training() {
   const [feed, setFeed] = useState<FeedRun[] | null>(null)
 
@@ -75,7 +78,7 @@ export default function Training() {
   const groups = groupByMonth(feed)
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-8">
+    <div className="max-w-5xl mx-auto px-8 py-8">
       <div className="mb-6">
         <h1 className="text-lg font-medium text-[#ededed]">Training</h1>
         <p className="text-sm text-[#888888] mt-0.5">Last 60 days · {feed.length} runs · times shown in UTC</p>
@@ -86,13 +89,14 @@ export default function Training() {
           <p className="text-xs text-[#888888] uppercase tracking-wide mb-2">{group.label}</p>
 
           <div className="border border-[#1f1f1f] rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[1fr_65px_65px_60px_60px_85px_60px_130px_28px] gap-3 px-4 py-2 bg-[#111111] text-xs text-[#555555] uppercase tracking-wide">
+            <div className={`grid ${GRID_COLUMNS} gap-3 px-4 py-2 bg-[#111111] text-xs text-[#555555] uppercase tracking-wide`}>
               <span>Run</span>
               <span>Date</span>
               <span>Distance</span>
               <span>Pace</span>
               <span>HR</span>
               <span>Effort</span>
+              <span>TRIMP</span>
               <span>EF</span>
               <span>Cardiac Drift</span>
               <span></span>
@@ -101,8 +105,8 @@ export default function Training() {
             {group.runs.map((run, i) => {
               const isLast = i === group.runs.length - 1
               const rowClass = isLast
-                ? "grid grid-cols-[1fr_65px_65px_60px_60px_85px_60px_130px_28px] gap-3 px-4 py-3 items-center bg-[#161616]"
-                : "grid grid-cols-[1fr_65px_65px_60px_60px_85px_60px_130px_28px] gap-3 px-4 py-3 items-center bg-[#161616] border-b border-[#1f1f1f]"
+                ? `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616]`
+                : `grid ${GRID_COLUMNS} gap-3 px-4 py-3 items-center bg-[#161616] border-b border-[#1f1f1f]`
 
 
               return (
@@ -123,6 +127,10 @@ export default function Training() {
                     ) : (
                       <span className="text-sm text-[#555555]">—</span>
                     )}
+                  </span>
+
+                  <span className="text-sm text-[#ededed]">
+                    {run.trimpScore !== null ? run.trimpScore.toFixed(0) : '—'}
                   </span>
 
                   <span className="text-sm text-[#ededed]">

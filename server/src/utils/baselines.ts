@@ -30,16 +30,15 @@ export const checkCalibration = (activities) => {
 
 export const computeBaselines = (activities) => {
 
-    // Getting array of suffer scores
     const scores = activities
-        .filter(activity => activity.suffer_score !== null)
-        .map(activity => activity.suffer_score)
+        .filter(activity => activity.trimp_score !== null)
+        .map(activity => activity.trimp_score)
 
     if (scores.length === 0) {
         return { easyThreshold: 0, moderateThreshold: 0, hardThreshold: 0 }
     }
 
-    // Getting standard deviation of suffer scores
+    // Getting standard deviation of TRIMP scores
     const scoresMean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     const variance = scores.reduce((sum, s) => sum + Math.pow(s - scoresMean, 2), 0) / scores.length;
     const stdDev = Math.sqrt(variance);

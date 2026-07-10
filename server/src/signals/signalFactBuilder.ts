@@ -1,17 +1,9 @@
-// Builds the SignalFact[] sent to the AI synthesis layer.
-// Pulls together the real outputs of the four signal computations and maps
-// each into its corresponding SignalFact shape. A fact is included only when
-// its underlying signal is viable / has real data, never with placeholder
-// or zeroed values standing in for "no data." This keeps the synthesis
-// prompt's "silence in the payload means silence in the response" rule
-// meaningful: silence always means no data, never a suppressed signal.
-
 import { SignalFact, TrainingLoadFact, CardiacDriftFact, SessionSpikeFact, EfficiencyFactorFact } from './signalFact';
 import { EfSummaryResult } from './efSummary';
 
 // --- Input shapes, matching the real return values of each compute function ---
 
-interface ConsecutiveHardDaysResult {
+interface TrainingLoadResult {
   severity: number;
   flag: string;
   highLoadDayCount: number;
@@ -21,6 +13,11 @@ interface ConsecutiveHardDaysResult {
   lastHighLoadDayISO: string | null;
   pattern: string;
   recentDays: string[];
+  sevenDayTotalTrimp: number;
+  mostRecentTrimp: number;
+  elevatedDaysThisWeek: number;
+  weeklyWatchThreshold: number;
+  highVolume: boolean;
 }
 
 interface CardiacDriftResult {
@@ -44,7 +41,7 @@ interface SessionSpikeResult {
 
 // --- Per-signal mappers ---
 
-function buildTrainingLoadFact(result: ConsecutiveHardDaysResult): TrainingLoadFact {
+function buildTrainingLoadFact(result: TrainingLoadResult): TrainingLoadFact {
   return {
     type: 'training_load',
     flag: result.flag as TrainingLoadFact['flag'],
@@ -99,7 +96,7 @@ function buildEfficiencyFactorFact(result: EfSummaryResult): EfficiencyFactorFac
 // --- Top-level builder ---
 
 export interface SignalResults {
-  trainingLoad: ConsecutiveHardDaysResult;
+  trainingLoad: TrainingLoadResult;
   cardiacDrift: CardiacDriftResult;
   sessionSpike: SessionSpikeResult;
   efSummary: EfSummaryResult;
@@ -107,7 +104,7 @@ export interface SignalResults {
 
 export function buildSignalFacts(results: SignalResults): SignalFact[] {
   const facts: (SignalFact | null)[] = [
-    buildTrainingLoadFact(results.trainingLoad), // always included -- computeConsecutiveHardDays has no non-viable path, "none"/0 is real data
+    buildTrainingLoadFact(results.trainingLoad),
     buildCardiacDriftFact(results.cardiacDrift),
     buildSessionSpikeFact(results.sessionSpike),
     buildEfficiencyFactorFact(results.efSummary),

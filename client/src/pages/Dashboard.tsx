@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useEffect } from 'react'
-import CHDCard from '../components/signals/CHDCard'
+import TrainingLoadCard from '../components/signals/TrainingLoadCard'
 import SessionSpikeCard from '../components/signals/SessionSpikeCard'
 import CardiacDriftCard from '../components/signals/CardiacDriftCard'
 import { EFTrendCard } from '../components/charts/EFTrendChart'
@@ -16,7 +16,7 @@ interface EFDataPoint {
     effortLevel: string
 }
 
-interface ChdData {
+interface TrainingLoadData {
   severity: number
   flag: string
   highLoadDayCount: number
@@ -26,6 +26,11 @@ interface ChdData {
   lastHighLoadDayISO: string | null
   pattern: string
   recentDays: string[]
+  sevenDayTotalTrimp: number
+  mostRecentTrimp: number
+  elevatedDaysThisWeek: number
+  weeklyWatchThreshold: number
+  highVolume: boolean
 }
 
   interface CardiacDriftData {
@@ -68,43 +73,36 @@ const SYNC_POLL_INTERVAL_MS = 3000
 
 export default function Dashboard() {
 
-    const [chdData, setChdData] = useState<ChdData | null>(null)
+    const [trainingLoadData, setTrainingLoadData] = useState<TrainingLoadData | null>(null)
     const [spikeData, setSpikeData] = useState<SessionSpikeData | null>(null)
     const [cardiacData, setCardiacData] = useState<CardiacDriftData | null>(null)
     const [loading, setLoading] = useState(true)
     const [efData, setEfData] = useState<EFDataPoint[]>([])
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | null>(null)
 
-    // Poll sync_status before loading signal data. New/reconnected accounts
-    // can have sync_status='syncing' immediately after OAuth, since the
-    // initial syncActivities/syncStreams chain runs in the background and
-    // the callback route redirects before it finishes -- without this
-    // check, the dashboard would render with incomplete data (blank chart,
-    // sparse AI synthesis) and no explanation why.
     useEffect(() => {
         let cancelled = false
         let pollTimer: ReturnType<typeof setTimeout>
 
         const checkSyncStatus = () => {
-          apiFetch('/auth/me')
-              .then(res => {
-                  if (res.status === 404) {
-                      console.log('>>> 404 REDIRECT LOGIC FIRING <<<')
-                      localStorage.removeItem('token')
-                      window.location.href = '/'
-                      return null
-                  }
-                  return res.json()
-              })
-              .then(user => {
-                  if (cancelled || !user) return
-                  setSyncStatus(user.sync_status)
-      
-                  if (user.sync_status === 'syncing') {
-                      pollTimer = setTimeout(checkSyncStatus, SYNC_POLL_INTERVAL_MS)
-                  }
-              })
-      }
+            apiFetch('/auth/me')
+                .then(res => {
+                    if (res.status === 404) {
+                        localStorage.removeItem('token')
+                        window.location.href = '/'
+                        return null
+                    }
+                    return res.json()
+                })
+                .then(user => {
+                    if (cancelled || !user) return
+                    setSyncStatus(user.sync_status)
+
+                    if (user.sync_status === 'syncing') {
+                        pollTimer = setTimeout(checkSyncStatus, SYNC_POLL_INTERVAL_MS)
+                    }
+                })
+        }
 
         checkSyncStatus()
 
@@ -114,19 +112,17 @@ export default function Dashboard() {
         }
     }, [])
 
-    // Only fetch signal data once sync is confirmed complete (or if we
-    // couldn't determine status at all, fail open rather than block forever).
     useEffect(() => {
         if (syncStatus !== 'idle') return
 
         Promise.all([
           apiFetch('/activities/cardiac-drift').then(res => res.json()),
-          apiFetch('/activities/chd').then(res => res.json()),
+          apiFetch('/activities/training-load').then(res => res.json()),
           apiFetch('/activities/spike').then(res => res.json()),
           apiFetch('/activities/efficiency-trend').then(res => res.json()),
-        ]).then(([cardiac, chd, spike, trend]) => {
+        ]).then(([cardiac, trainingLoad, spike, trend]) => {
           setCardiacData(cardiac)
-          setChdData(chd)
+          setTrainingLoadData(trainingLoad)
           setSpikeData(spike)
           setEfData(trend)
           setLoading(false)
@@ -166,14 +162,14 @@ export default function Dashboard() {
 
           <div className="h-3" />
 
-          {/* AI card -- directly below the chart, own independent card */}
-          {import.meta.env.VITE_ENABLE_AI_SYNTHESIS === 'true' && <AISynthesis />}
+          {/* AI card -- directly below the chart, own independent card <AISynthesis /> */}
+        
 
           {/* Signal cards -- equal width, own independent cards */}
           <p className="text-xs text-[#888888] uppercase tracking-wide mb-3">Signals</p>
           <div className="grid grid-cols-3 gap-3">
             {cardiacData && <CardiacDriftCard data={cardiacData} />}
-            {chdData && <CHDCard data={chdData} />}
+            {trainingLoadData && <TrainingLoadCard data={trainingLoadData} />}
             {spikeData && <SessionSpikeCard data={spikeData} />}
           </div>
 

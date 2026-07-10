@@ -30,9 +30,10 @@ export default function PrivacyPolicy() {
             When you connect your Strava account, Stryde collects your basic
             profile information (name and profile photo), your running
             activities (distance, pace, heart rate, elevation, and duration),
-            and heart rate stream data for runs within the last 60 days. We
-            also ask you for your resting and max heart rate, which you provide
-            directly during setup.
+            and heart rate stream data for runs within the last 60 days,
+            which is processed to compute your training metrics and is not
+            stored. We also ask you for your resting and max heart rate,
+            which you provide directly during setup.
           </p>
         </section>
 
@@ -42,7 +43,8 @@ export default function PrivacyPolicy() {
           </h2>
           <p>
             This data is used solely to compute training metrics for your own
-            account — efficiency factor, cardiac drift, training load, and
+            account — efficiency factor, cardiac drift, training load (using
+            a heart-rate-based training-stress formula called TRIMP), and
             related signals shown on your dashboard. We do not sell your data,
             share it with advertisers, or use it to train machine learning
             models. Your data is never visible to other Stryde users.
@@ -55,10 +57,11 @@ export default function PrivacyPolicy() {
           </h2>
           <p>
             Detailed stream data (heart rate, pace, elevation per second) is
-            retained for 60 days, since our training-fatigue signals are only
-            meaningful within that window. Activity summaries (distance, date,
-            overall effort) are retained for as long as your account remains
-            connected, so your longer-term trends stay visible.
+            processed to compute your training metrics and discarded
+            immediately afterward — it is not stored. Activity summaries
+            (distance, date, overall effort) and computed training metrics
+            are retained for as long as your account remains connected, so
+            your longer-term trends stay visible.
           </p>
         </section>
 
@@ -136,10 +139,10 @@ export default function PrivacyPolicy() {
             Questions about this policy or how your data is handled? Reach out
             at{' '}
             <a
-              href="mailto:awesomericky8@gmail.com"
+              href="mailto:stryde.application@gmail.com"
               className="text-[#378ADD] hover:underline"
             >
-              YOUR_EMAIL_HERE
+              stryde.application@gmail.com
             </a>
             .
           </p>

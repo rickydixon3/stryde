@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { supabase } from '../supabase';
-import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
 import { checkCalibration, computeBaselines } from '../signals/../utils/baselines';
 import { aggregateDriftValues} from '../signals/cardiacDrift';
 import { classifyEffortByHRR, computeHrrBaselines } from '../signals/runEfficiency';
@@ -8,6 +7,7 @@ import { getEFResults } from '../utils/efPipeline';
 import { AuthenticatedRequest, requireAuth } from '../middleware/requireAuth';
 import { syncActivities, syncStreams } from '../utils/sync';
 import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
+import { computeTrainingLoad } from '../signals/trainingload';
 
 const router = Router();
 
@@ -65,14 +65,14 @@ router.get('/cardiac-drift', requireAuth, async (req: AuthenticatedRequest, res)
   res.json(aggregateDriftValues(recentActivities ?? []));
 });
 
-router.get('/chd', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/training-load', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { data: activities } = await supabase
       .from('activities')
       .select('*')
       .eq('user_id', req.userId);
 
   const baselines = computeBaselines(activities);
-  const result = computeConsecutiveHardDays(activities, baselines);
+  const result = computeTrainingLoad(activities, baselines);
   res.json(result);
 });
 
@@ -141,8 +141,9 @@ router.get('/feed', requireAuth, async (req: AuthenticatedRequest, res) => {
       efValue: activity.ef_value ?? null,
       effortLevel,
       drift: activity.drift_percent ?? null,
-      driftFlag: activity.drift_flag ?? null
-    }
+      driftFlag: activity.drift_flag ?? null,
+      trimpScore: activity.trimp_score ?? null
+}
   })
 
   res.json(feed.sort((a, b) =>

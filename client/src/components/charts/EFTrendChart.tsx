@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Area,
   XAxis,
@@ -101,26 +101,39 @@ export default function EFTrendChart({ data, windowDays, rollingWindow, onTrendC
   windowStart.setDate(windowStart.getDate() - windowDays)
   const sliced = sorted.filter(p => new Date(p.date) >= windowStart)
 
-  if (sliced.length < MIN_POINTS_FOR_TREND) {
-    if (onTrendChange) onTrendChange(null, null)
+  const notEnoughData = sliced.length < MIN_POINTS_FOR_TREND
+
+  const rolling = notEnoughData ? [] : rollingAverage(sliced.map(p => p.efValue), rollingWindow)
+  const chartData = notEnoughData ? [] : sliced.map((p, i) => ({ ...p, trend: rolling[i] }))
+
+  // Derive the headline stat directly from what's on screen: how has the
+  // trend line itself moved from the first visible point to the last,
+  // rather than a separately-fetched, window-independent calculation.
+  const pctChange = notEnoughData ? null : (() => {
+    const firstTrend = chartData[0].trend
+    const lastTrend = chartData[chartData.length - 1].trend
+    return Math.round(((lastTrend - firstTrend) / firstTrend) * 10000) / 100
+  })()
+
+  const lastTrendValue = notEnoughData ? null : chartData[chartData.length - 1].trend
+
+  // Notify the parent (EFTrendCard) of the derived headline stat as a
+  // proper side effect, after render completes -- calling onTrendChange
+  // directly in the render body triggers React's "Cannot update a
+  // component while rendering a different component" warning, since it
+  // synchronously calls the parent's setState from inside this
+  // component's render phase.
+  useEffect(() => {
+    if (onTrendChange) onTrendChange(pctChange, lastTrendValue)
+  }, [pctChange, lastTrendValue])
+
+  if (notEnoughData) {
     return (
       <div style={{ width: '100%', height: 260 }} className="flex items-center justify-center">
         <p className="text-sm text-[#555555]">Not enough runs in this window yet</p>
       </div>
     )
   }
-
-  const rolling = rollingAverage(sliced.map(p => p.efValue), rollingWindow)
-  const chartData = sliced.map((p, i) => ({ ...p, trend: rolling[i] }))
-
-  // Derive the headline stat directly from what's on screen: how has the
-  // trend line itself moved from the first visible point to the last,
-  // rather than a separately-fetched, window-independent calculation.
-  const firstTrend = chartData[0].trend
-  const lastTrend = chartData[chartData.length - 1].trend
-  const pctChange = Math.round(((lastTrend - firstTrend) / firstTrend) * 10000) / 100
-
-  if (onTrendChange) onTrendChange(pctChange, lastTrend)
 
   return (
     <div style={{ width: '100%', height: 260 }}>
@@ -182,7 +195,7 @@ export function EFTrendCard({ efData }: CardProps) {
     <div className="border border-[#1f1f1f] rounded-lg p-5 mb-3 bg-[#161616]">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <p className="text-xs text-[#888888] uppercase tracking-wide mb-1">Efficiency factor · grade adjusted pace / aerobic effort</p>
+          <p className="text-xs text-[#888888] uppercase tracking-wide mb-1">Efficiency factor · grade adjusted pace / Heart rate reserve</p>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-medium text-[#ededed]">
               {latestValue !== null ? formatEF(latestValue) : '—'}

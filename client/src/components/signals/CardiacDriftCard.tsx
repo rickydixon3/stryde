@@ -45,7 +45,7 @@ function CardiacDriftCard({ data }: Props) {
         </div>
         <div className="mb-3">
           <span className="text-2xl font-medium text-[#ededed]">—</span>
-          <p className="3text-sm text-[#888888] mt-1">
+          <p className="text-sm text-[#888888] mt-1">
             {data.reason ?? 'Not enough data yet'}
           </p>
         </div>
@@ -55,14 +55,6 @@ function CardiacDriftCard({ data }: Props) {
 
   const badge = badgeConfig[data.flag as keyof typeof badgeConfig]
     ?? { label: 'WATCH', class: 'bg-[#2a1a00] text-[#f59e0b]' }
-
-  const detailParts: string[] = []
-  if (data.mostRecentRun) {
-    detailParts.push(`${data.mostRecentRun.drift}% most recent (${formatDate(data.mostRecentRun.date)})`)
-  }
-  if (data.worstRun) {
-    detailParts.push(`${data.worstRun.drift}% worst this week (${formatDate(data.worstRun.date)})`)
-  }
 
   return (
     <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
@@ -85,11 +77,23 @@ function CardiacDriftCard({ data }: Props) {
         </p>
       </div>
 
-      {detailParts.length > 0 && (
-        <p className="text-xs text-[#555555] mt-auto">
-          {detailParts.join(' · ')}
-        </p>
+      {data.mostRecentRun && (
+        <div className="mb-3 pt-3 border-t border-[#1f1f1f]">
+          <span className="text-lg font-medium text-[#ededed]">
+            {data.mostRecentRun.drift}% drift
+          </span>
+          <p className="text-xs text-[#888888] mt-0.5">
+            Most recent · {formatDate(data.mostRecentRun.date)}
+          </p>
+        </div>
       )}
+
+      <p className="text-xs text-[#555555] mt-auto">
+        {data.worstRun ? `${data.worstRun.drift}% worst this week (${formatDate(data.worstRun.date)})` : ''}
+      </p>
+      <p className="text-[12px] text-[#444444] mt-1">
+        Based on velocity + HR stream
+      </p>
 
     </div>
   )

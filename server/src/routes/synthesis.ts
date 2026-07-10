@@ -3,23 +3,16 @@
 // (Claude) rather than just reading from Supabase like the routes in
 // activities.ts.
 //
-// Post-compute-once-migration: this route no longer fetches or touches
-// activity_streams at all. EF, drift, and effort_level are precomputed at
-// sync time and stored directly on the activities table (see
-// utils/sync.ts's syncStreams and the one-time backfill script), so every
-// signal here is built from plain SELECTs, not live computation from raw
-// streams.
-//
-// Caching: synthesis is expensive (a real LLM call, plus signal
-// aggregation) and rarely needs to change moment-to-moment, so results are
-// cached on the users table (cached_synthesis, cached_synthesis_at) and
-// only recomputed when EITHER the cache is from a previous calendar day OR
-// a new run has been logged since the cache was written -- whichever comes
-// first invalidates it. cached_synthesis stores {headline, detail,
-// signalFacts} as a JSON string -- signalFacts is cached alongside the text
-// so the frontend's badge (derived from signalFacts' flags) stays
-// consistent with the cached headline/detail, rather than going
-// stale/contradictory on a cache hit.
+// Caching: synthesis is expensive (a real LLM call, plus four signal
+// computations) and rarely needs to change moment-to-moment, so results
+// are cached on the users table (cached_synthesis, cached_synthesis_at)
+// and only recomputed when EITHER the cache is from a previous calendar
+// day OR a new run has been logged since the cache was written --
+// whichever comes first invalidates it. cached_synthesis stores
+// {headline, detail, signalFacts} as a JSON string -- signalFacts is
+// cached alongside the text so the frontend's badge (derived from
+// signalFacts' flags) stays consistent with the cached headline/detail,
+// rather than going stale/contradictory on a cache hit.
 //
 // Response format: the Anthropic call returns { headline, detail } as JSON
 // (see synthesisPrompt.ts's Output Format section). The model sometimes
@@ -37,21 +30,24 @@ import { supabase } from '../supabase';
 import { AuthenticatedRequest, requireAuth } from '../middleware/requireAuth';
 
 import { computeBaselines } from '../utils/baselines';
-import { computeConsecutiveHardDays } from '../signals/consecutiveHardDays';
-import { aggregateDriftValues } from '../signals/cardiacDrift';
+import { computeTrainingLoad } from '../signals/trainingload';
+import { computeCardiacDrift } from '../signals/cardiacDrift';
 import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
+import { computeRunEfficiency, RunEfficiencyViable } from '../signals/runEfficiency';
 import { computeEfSummary } from '../signals/efSummary';
-import { getEFResults } from '../utils/efPipeline';
 
 import { buildSignalFacts, SignalResults } from '../signals/signalFactBuilder';
+import { SignalFact } from '../signals/signalFact';
 import { SYNTHESIS_SYSTEM_PROMPT } from '../signals/synthesisPrompt';
 
 const router = Router();
 
+const STREAMS_WINDOW_DAYS = 60; // matches getEFResults' existing window
+
 interface SynthesisContent {
   headline: string;
   detail: string;
-  signalFacts: import('../signals/signalFact').SignalFact[];
+  signalFacts: SignalFact[];
 }
 
 function parseAsUtc(dateStr: string): Date {
@@ -81,7 +77,10 @@ function isCacheValid(cachedAt: string | null, mostRecentActivityDate: string | 
 
 // Defensive: strip markdown code fences if the model wraps its JSON
 // despite being told not to -- observed in real testing. Shared logic
-// with scripts/testSynthesis.ts's parser.
+// with scripts/testSynthesis.ts's parser. Note this parses the RAW
+// Anthropic response, which only ever contains {headline, detail} --
+// signalFacts gets merged in separately by the caller, since the model
+// never sees or returns signalFacts itself.
 function parseAnthropicResponse(rawText: string): { headline: string; detail: string } | null {
   const stripped = rawText
     .trim()
@@ -166,21 +165,42 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
 
     // --- Cache miss: recompute from scratch ---
 
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() - STREAMS_WINDOW_DAYS);
+
+    const recentActivities = allActivities.filter(
+      a => new Date(a.start_date) >= windowStart
+    );
+    const recentActivityIds = recentActivities.map(a => a.id);
+
+    const { data: recentStreams } = await supabase
+      .from('activity_streams')
+      .select('*')
+      .in('activity_id', recentActivityIds);
+
+    const activitiesWithStreams = recentActivities.map(activity => ({
+      ...activity,
+      stream: recentStreams?.find(s => s.activity_id === activity.id),
+    }));
+
     const baselines = computeBaselines(allActivities);
 
-    const trainingLoad = computeConsecutiveHardDays(allActivities, baselines);
+    const trainingLoad = computeTrainingLoad(allActivities, baselines);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
-    const recentActivitiesForDrift = allActivities.filter(
+    const last7DaysWithStreams = activitiesWithStreams.filter(
       a => new Date(a.start_date) >= sevenDaysAgo
     );
-    const cardiacDrift = aggregateDriftValues(recentActivitiesForDrift);
+    const cardiacDrift = computeCardiacDrift(last7DaysWithStreams, user.resting_hr, user.max_hr);
 
     const sessionSpike = computeSingleSessionSpike(allActivities);
 
-    const { results: efResults } = await getEFResults(req.userId);
+    const efResults = activitiesWithStreams
+      .map(activity => computeRunEfficiency(activity, user.resting_hr, user.max_hr, baselines))
+      .filter((r): r is RunEfficiencyViable => r.viable === true)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const efSummary = computeEfSummary(efResults);
 
     const signalResults: SignalResults = {

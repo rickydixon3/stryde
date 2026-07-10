@@ -3,11 +3,15 @@ import { LogoMark } from '../components/Logo'
 const VALUE_PROPS = [
   {
     title: 'Grade-adjusted efficiency',
-    body: 'Grade-adjusted pace normalized against your own heart-rate reserve, computed across the whole run, not a rough velocity-to-heart-rate ratio.',
+    body: 'Your pace, adjusted for elevation and normalized to your own heart-rate reserve, computed across the entire run, giving you an accurate efficiency reading.',
   },
   {
     title: 'Cardiac drift, per run',
     body: 'Also known as aerobic decoupling. See exactly how your cardiovascular efficiency holds up from the first half of a run to the last, so you catch fatigue before it shows up in your times.',
+  },
+  {
+    title: 'Training load, backed by data',
+    body: 'Computed with TRIMP, a heart-rate-based formula for training stress, grounded in published research and tested against real training history.',
   },
   {
     title: 'Personalized, not generic',
@@ -34,15 +38,15 @@ export default function Landing() {
       </div>
 
       {/* Hero -- plain background, no overlay, own clean space */}
-      <div className="max-w-3xl mx-auto px-6 pt-12 pb-16 text-center">
+      <div className="max-w-4xl mx-auto px-6 pt-12 pb-16 text-center">
         <h1 className="text-3xl sm:text-4xl font-medium text-[#ededed] mb-4 leading-tight">
-        See how your running efficiency is trending
+        Track your running performance and training load.
         <br />
-        Connect with Strava in under a minute.
+        Connect with Strava seamlessly.
         </h1>
         <p className="text-base text-[#888888] mb-10 max-w-xl mx-auto">
-        Efficiency factor, cardiac drift, and training load. 
-        The signals that show what's actually happening in your training
+        Efficiency factor, cardiac drift, and TRIMP-based training load.
+        The signals that show what's actually happening in your training.
         </p>
 
         <button onClick={handleConnect} className="inline-block">
@@ -70,9 +74,9 @@ export default function Landing() {
         />
       </div>
 
-      {/* Value props */}
-      <div className="max-w-4xl mx-auto px-6 pb-24">
-        <div className="grid sm:grid-cols-2 gap-6">
+      {/* Value props -- 3-column grid, 5 cards (3 on top, 2 centered below) */}
+      <div className="max-w-5xl mx-auto px-6 pb-24">
+        <div className="grid sm:grid-cols-3 gap-6">
           {VALUE_PROPS.map((prop) => (
             <div
               key={prop.title}

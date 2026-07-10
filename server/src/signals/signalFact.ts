@@ -5,7 +5,7 @@
 // to Claude always matches what the signals layer actually produces.
 //
 // Source of truth for each variant:
-//   TrainingLoadFact     -> computeConsecutiveHardDays() in signals/consecutiveHardDays.ts
+//   TrainingLoadFact     -> computeTrainingLoad() in signals/trainingLoad.ts
 //   CardiacDriftFact     -> computeCardiacDrift() in signals/cardiacDrift.ts
 //   SessionSpikeFact     -> computeSingleSessionSpike() in signals/singleSessionSpike.ts
 //   EfficiencyFactorFact -> GET /activities/ef-summary route in routes/activities.ts
