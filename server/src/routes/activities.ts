@@ -42,6 +42,48 @@ router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) 
   res.json({ message: 'streams synced' });
 });
 
+// route for manual sync
+const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+router.post('/sync-now', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const { data: user } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', req.userId)
+        .single();
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.last_manual_sync_at) {
+        const lastSync = new Date(user.last_manual_sync_at).getTime();
+        const elapsed = Date.now() - lastSync;
+        if (elapsed < SYNC_COOLDOWN_MS) {
+            const secondsRemaining = Math.ceil((SYNC_COOLDOWN_MS - elapsed) / 1000);
+            return res.status(429).json({
+                error: 'Please wait before syncing again',
+                secondsRemaining
+            });
+        }
+    }
+
+    try {
+        await syncActivities(user);
+        await syncStreams(user);
+
+        await supabase
+            .from('users')
+            .update({ last_manual_sync_at: new Date().toISOString() })
+            .eq('id', req.userId);
+
+        res.json({ message: 'Sync complete' });
+    } catch (err) {
+        console.error('Manual sync failed:', err);
+        res.status(500).json({ error: 'Sync failed, please try again' });
+    }
+});
+
 // Route to test calibrations and baselines
 router.get('/test-baselines', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { data: activities } = await supabase.from('activities').select('*').eq('user_id', req.userId);

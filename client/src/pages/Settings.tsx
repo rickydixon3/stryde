@@ -2,18 +2,26 @@ import { useState, useEffect } from 'react'
 import { apiFetch } from '../utils/api'
 
 export default function Settings() {
+  // HR SETTINGS
   const [restingHr, setRestingHr] = useState('')
   const [maxHr, setMaxHr] = useState('')
   const [hrSaved, setHrSaved] = useState(false)
   const [hrError, setHrError] = useState('')
   const [savingHr, setSavingHr] = useState(false)
 
+  // DISCONNECTING STRAVA 
   const [disconnecting, setDisconnecting] = useState(false)
   const [disconnectError, setDisconnectError] = useState('')
 
+  // DELETING ACCOUNT
   const [confirmText, setConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncSuccess, setSyncSuccess] = useState(false)
+
 
   useEffect(() => {
     apiFetch('/auth/me')
@@ -100,11 +108,56 @@ export default function Settings() {
     }
   }
 
+  const handleSyncNow = () => {
+    setSyncing(true)
+    setSyncError(null)
+    setSyncSuccess(false)
+  
+    apiFetch('/activities/sync-now', { method: 'POST' })
+      .then(async res => {
+        if (res.status === 429) {
+          const data = await res.json()
+          setSyncError(`Please wait ${data.secondsRemaining}s before syncing again`)
+          return
+        }
+        if (!res.ok) {
+          setSyncError('Sync failed, please try again')
+          return
+        }
+        setSyncSuccess(true)
+      })
+      .catch(() => setSyncError('Sync failed, please try again'))
+      .finally(() => setSyncing(false))
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-8 py-8 flex flex-col gap-6">
 
       <div>
         <h1 className="text-lg font-medium text-[#ededed]">Settings</h1>
+      </div>
+
+    {/* Manual Sync w/ Strava */}
+      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
+        <p className="text-sm font-medium text-[#ededed] mb-1">Sync your Strava data</p>
+        <p className="text-sm text-[#888888] mb-4">
+          Pull in any new runs from Strava right now, instead of waiting.
+        </p>
+
+        {syncError && <p className="text-xs text-[#ef4444] mb-3">{syncError}</p>}
+        {syncSuccess && !syncError && (
+          <p className="text-xs text-[#1D9E75] mb-3">
+            Your latest runs have been pulled in from Strava.
+          </p>
+        )}
+
+        <button
+          onClick={handleSyncNow}
+          disabled={syncing}
+          className="bg-[#1f1f1f] hover:bg-[#2a2a2a] disabled:opacity-50 text-[#ededed] text-sm font-medium px-4 py-2 rounded-md transition-colors"
+        >
+          {syncing ? 'Syncing...' : syncSuccess ? 'Synced' : 'Sync from Strava'}
+        </button>
       </div>
 
       {/* Heart rate settings */}
@@ -145,6 +198,9 @@ export default function Settings() {
           {savingHr ? 'Saving...' : 'Save'}
         </button>
       </div>
+
+    
+    
 
       {/* Disconnect */}
       <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
