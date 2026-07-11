@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import activitiesRoutes from './routes/activities'
 import synthesisRoutes from './routes/synthesis'
+import webhooksRoutes from './routes/webhooks'
 
 dotenv.config();
 
@@ -19,8 +20,9 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.use('/auth', authRoutes);
 app.use('/activities', activitiesRoutes);
+app.use('/', webhooksRoutes);
 
-// AI synthesis route gated behind an explicit env var, defaulting to
+// AI synthesis route gated behind an env variable, defaulting to
 // disabled. This lets the feature exist fully in the codebase/git history
 // while never actually running in a deployed environment unless
 // ENABLE_AI_SYNTHESIS=true is explicitly set there.

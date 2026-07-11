@@ -1,26 +1,44 @@
 import { supabase } from '../supabase'
-import { getValidAccessToken } from './strava'
 import { computeRunEfficiency } from '../signals/runEfficiency';
 import { computeBaselines } from './baselines';
 import { computeRunDrift } from '../signals/cardiacDrift';
 import { computeTrimp } from '../signals/trimp';
+import { isInvalidTokenError, refreshAccessToken, getValidAccessToken } from './strava';
 
 export const syncActivities = async (user: any) => {
-    const accessToken = await getValidAccessToken(user);
+    let accessToken = await getValidAccessToken(user);
 
     let page = 1;
-    let activities: any[] = [];
 
     while (true) {
-        const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`, {
+        let response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
         });
 
-        activities = await response.json();
-        if (activities.length == 0) break;
+        let activities = await response.json();
+
+        if (!Array.isArray(activities) && isInvalidTokenError(activities)) {
+            console.log(`Access token rejected as invalid for user ${user.id}, forcing refresh and retrying`);
+            accessToken = await refreshAccessToken(user);
+
+            response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            activities = await response.json();
+        }
+
+        if (!Array.isArray(activities)) {
+            console.error(`syncActivities: unexpected non-array response for user ${user.id}:`, activities);
+            break;
+        }
+
+        if (activities.length === 0) break;
 
         const runningTypes = ['Run', 'TrailRun', 'VirtualRun', 'Treadmill'];
         const runs = activities.filter(activity =>
@@ -68,7 +86,7 @@ export const syncStreams = async (user: any) => {
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-    const accessToken = await getValidAccessToken(currentUser);
+    let accessToken = await getValidAccessToken(currentUser);
 
     const { data: recentActivities } = await supabase
         .from('activities')
@@ -84,13 +102,32 @@ export const syncStreams = async (user: any) => {
     const baselines = computeBaselines(allActivities ?? []);
 
     for (const activity of recentActivities) {
-        const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=time,heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
+        let streamResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=time,heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
         });
-        const streamData = await response.json();
+        let streamData = await streamResponse.json();
+
+        console.log('>>> STREAM FETCH RESULT <<<', activity.name, JSON.stringify({
+            isArray: Array.isArray(streamData),
+            keys: Object.keys(streamData ?? {}),
+            preview: JSON.stringify(streamData).slice(0, 200)
+          }));
+
+        if (!Array.isArray(streamData) && isInvalidTokenError(streamData)) {
+            console.log(`Access token rejected as invalid mid-sync for user ${currentUser.id}, forcing refresh and retrying`);
+            accessToken = await refreshAccessToken(currentUser);
+
+            streamResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.strava_id}/streams?keys=time,heartrate,cadence,velocity_smooth,altitude&key_by_type=true`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            streamData = await streamResponse.json();
+        }
 
         const activityWithStream = {
             ...activity,

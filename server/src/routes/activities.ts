@@ -32,6 +32,8 @@ router.get('/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) => {
+    console.log('>>> /sync-streams route ENTERED <<<');
+    
   const { data: user } = await supabase
       .from('users')
       .select('*')

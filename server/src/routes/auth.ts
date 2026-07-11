@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { requireAuth, AuthenticatedRequest } from '../middleware/requireAuth';
 import { syncActivities, syncStreams } from '../utils/sync';
 import { getValidAccessToken } from '../utils/strava';
+import { purgeUserAccount } from '../utils/deleteAccount';
 
 const router = Router();
 
@@ -155,55 +156,10 @@ router.post('/onboarding', requireAuth, async (req: AuthenticatedRequest, res) =
 });
 
 router.delete('/delete-account', requireAuth, async (req: AuthenticatedRequest, res) => {
-    const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', req.userId)
-        .single();
+    const result = await purgeUserAccount(req.userId);
 
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    try {
-        const accessToken = await getValidAccessToken(user);
-        await fetch('https://www.strava.com/oauth/revoke', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-    } catch (err) {
-        console.log('Strava revoke error:', err);
-    }
-
-    // Step 2: delete stream data first (child rows before parent).
-    const { data: activities } = await supabase
-        .from('activities')
-        .select('id')
-        .eq('user_id', req.userId);
-
-    const activityIds = activities?.map(a => a.id) ?? [];
-
-    if (activityIds.length > 0) {
-        await supabase
-            .from('activity_streams')
-            .delete()
-            .in('activity_id', activityIds);
-    }
-
-    await supabase
-        .from('activities')
-        .delete()
-        .eq('user_id', req.userId);
-
-    const { error: userDeleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', req.userId);
-
-    if (userDeleteError) {
-        return res.status(500).json({ error: 'Failed to delete account', details: userDeleteError.message });
+    if (!result.success) {
+        return res.status(result.error === 'User not found' ? 404 : 500).json({ error: result.error });
     }
 
     res.json({ message: 'Your account and all associated data have been permanently deleted.' });
