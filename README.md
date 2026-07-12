@@ -4,7 +4,7 @@ Running analytics platform that computes personalized training signals from Stra
 
 **Live app:** https://stryde-iota.vercel.app
 
-<img src="client/public/dashboard-preview.png" alt="Stryde dashboard showing efficiency factor trend, cardiac drift, training load, and session spike signals" width="550"/>
+![Stryde dashboard showing efficiency factor trend, cardiac drift, training load, and session spike signals](client/public/dashboard-preview.png)
 
 ---
 
