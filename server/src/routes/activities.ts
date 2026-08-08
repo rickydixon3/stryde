@@ -5,6 +5,7 @@ import { aggregateDriftValues} from '../signals/cardiacDrift';
 import { classifyEffortByHRR, computeHrrBaselines } from '../signals/runEfficiency';
 import { getEFResults } from '../utils/efPipeline';
 import { AuthenticatedRequest, requireAuth } from '../middleware/requireAuth';
+import { blockDemoWrites } from '../middleware/blockDemoWrites';
 import { syncActivities, syncStreams } from '../utils/sync';
 import { computeSingleSessionSpike } from '../signals/singleSessionSpike';
 import { computeTrainingLoad } from '../signals/trainingload';
@@ -16,7 +17,7 @@ import { computeTrimp } from '../signals/trimp';
 const router = Router();
 
 // SYNCING ACTIVITIES
-router.get('/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/sync', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
   const { data: user } = await supabase
       .from('users')
       .select('*')
@@ -31,7 +32,7 @@ router.get('/sync', requireAuth, async (req: AuthenticatedRequest, res) => {
   res.json({ message: 'sync complete' });
 });
 
-router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/sync-streams', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     console.log('>>> /sync-streams route ENTERED <<<');
     
   const { data: user } = await supabase
@@ -51,7 +52,7 @@ router.get('/sync-streams', requireAuth, async (req: AuthenticatedRequest, res) 
 // route for manual sync
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
-router.post('/sync-now', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/sync-now', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const { data: user } = await supabase
         .from('users')
         .select('*')
@@ -92,7 +93,7 @@ router.post('/sync-now', requireAuth, async (req: AuthenticatedRequest, res) => 
 
 const RECOMPUTE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // once per day
 
-router.post('/recompute-history', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/recompute-history', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const { data: user } = await supabase
         .from('users')
         .select('*')
@@ -275,7 +276,7 @@ router.get('/feed', requireAuth, async (req: AuthenticatedRequest, res) => {
     return {
       activityId: activity.id,
       stravaId: activity.strava_id,
-      stravaUrl: `https://www.strava.com/activities/${activity.strava_id}`,
+      stravaUrl: activity.strava_id > 0 ? `https://www.strava.com/activities/${activity.strava_id}` : null,
       name: activity.name,
       date: activity.start_date,
       distance: activity.distance,

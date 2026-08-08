@@ -6,7 +6,7 @@ import { apiFetch } from '../utils/api'
 interface FeedRun {
   activityId: number
   stravaId: number
-  stravaUrl: string
+  stravaUrl: string | null
   name: string
   date: string
   distance: number
@@ -153,9 +153,13 @@ export default function Training() {
                       )}
                     </span>
 
-                    <a href={run.stravaUrl} target="_blank" rel="noopener noreferrer" className="text-[#555555] hover:text-[#ededed] transition-colors">
-                      <ExternalLink size={14} />
-                    </a>
+                    {run.stravaUrl ? (
+                      <a href={run.stravaUrl} target="_blank" rel="noopener noreferrer" className="text-[#555555] hover:text-[#ededed] transition-colors">
+                        <ExternalLink size={14} />
+                      </a>
+                    ) : (
+                      <ExternalLink size={14} className="text-[#2a2a2a]" />
+                    )}
                   </div>
                 )
               })}

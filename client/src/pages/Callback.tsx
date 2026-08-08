@@ -13,6 +13,12 @@ export default function Callback() {
 
     localStorage.setItem('token', token)
 
+    // Strip the token out of the URL immediately, before any further
+    // async work, so it never sits visibly in the address bar (or in
+    // browser history) longer than a single frame. Uses replaceState so
+    // this doesn't create a new history entry or reload the page.
+    window.history.replaceState({}, '', '/callback')
+
     apiFetch('/auth/me')
       .then(res => res.json())
       .then(user => {

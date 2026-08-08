@@ -56,7 +56,6 @@ export const syncActivities = async (user: any) => {
                 average_speed: run.average_speed,
                 average_heartrate: run.average_heartrate,
                 average_cadence: run.average_cadence,
-                suffer_score: run.suffer_score,
                 start_lat: run.start_latlng[0] ?? null,
                 start_lng: run.start_latlng[1] ?? null,
                 device_name: run.device_name,

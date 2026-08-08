@@ -4,7 +4,6 @@ import TrainingLoadCard from '../components/signals/TrainingLoadCard'
 import SessionSpikeCard from '../components/signals/SessionSpikeCard'
 import CardiacDriftCard from '../components/signals/CardiacDriftCard'
 import { EFTrendCard } from '../components/charts/EFTrendChart'
-import AISynthesis from '../components/AISynthesis'
 import { apiFetch } from '../utils/api'
 
 interface EFDataPoint {
@@ -161,10 +160,6 @@ export default function Dashboard() {
             )}
 
           <div className="h-3" />
-
-          {/* AI card -- directly below the chart, own independent card, env-gated, doesnt render on deployment */}
-          {import.meta.env.VITE_ENABLE_AI_SYNTHESIS === 'true' && <AISynthesis />}
-        
 
           {/* Signal cards -- equal width, own independent cards */}
           <p className="text-xs text-[#888888] uppercase tracking-wide mb-3">Signals</p>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../supabase';
 import jwt from 'jsonwebtoken';
 import { requireAuth, AuthenticatedRequest } from '../middleware/requireAuth';
+import { blockDemoWrites } from '../middleware/blockDemoWrites';
 import { syncActivities, syncStreams } from '../utils/sync';
 import { getValidAccessToken } from '../utils/strava';
 import { purgeUserAccount } from '../utils/deleteAccount';
@@ -61,10 +62,6 @@ router.get('/strava/callback', async (req, res) => {
         userId = data?.id;
 
         if (data) {
-            // Fire-and-forget on the HTTP response (the redirect below doesn't
-            // wait for this), but the sync_status column lets the frontend
-            // poll /auth/me and know when it's actually done, rather than
-            // rendering the dashboard against a partially-synced account.
             syncActivities(data)
                 .then(() => syncStreams(data))
                 .then(() =>
@@ -113,7 +110,7 @@ router.get('/strava/callback', async (req, res) => {
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
     const { data: user, error } = await supabase
         .from('users')
-        .select('onboarding_complete, firstname, lastname, profile_picture_url, sync_status')
+        .select('onboarding_complete, firstname, lastname, profile_picture_url, sync_status, is_demo')
         .eq('id', req.userId)
         .single();
 
@@ -124,7 +121,7 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
     res.json(user);
 });
 
-router.post('/onboarding', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/onboarding', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const { restingHr, maxHr } = req.body;
 
     if (!maxHr) {
@@ -155,7 +152,28 @@ router.post('/onboarding', requireAuth, async (req: AuthenticatedRequest, res) =
     res.json(user);
 });
 
-router.delete('/delete-account', requireAuth, async (req: AuthenticatedRequest, res) => {
+// route for acccessing demo mode
+router.post('/demo-login', async (req, res) => {
+    const { data: demoUser, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('is_demo', true)
+        .single();
+
+    if (error || !demoUser) {
+        return res.status(404).json({ error: 'Demo account not configured' });
+    }
+
+    const appToken = jwt.sign(
+        { userId: demoUser.id },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '7d' }
+    );
+
+    res.json({ token: appToken });
+});
+
+router.delete('/delete-account', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const result = await purgeUserAccount(req.userId);
 
     if (!result.success) {
@@ -165,7 +183,7 @@ router.delete('/delete-account', requireAuth, async (req: AuthenticatedRequest, 
     res.json({ message: 'Your account and all associated data have been permanently deleted.' });
 });
 
-router.post('/disconnect', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/disconnect', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const { data: user } = await supabase
         .from('users')
         .select('*')
@@ -197,7 +215,7 @@ router.post('/disconnect', requireAuth, async (req: AuthenticatedRequest, res) =
     res.json({ message: 'Disconnected from Strava. Your training history is still saved.' });
 });
 
-router.patch('/hr-settings', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.patch('/hr-settings', requireAuth, blockDemoWrites, async (req: AuthenticatedRequest, res) => {
     const { restingHr, maxHr } = req.body;
 
     if (!maxHr || !restingHr || restingHr >= maxHr) {

@@ -61,14 +61,6 @@ Requires a Strava API application, a Supabase project, and, for webhook testing,
 
 ---
 
-## Status
-
-An AI-powered synthesis feature (Claude API, `server/src/routes/synthesis.ts`) is implemented but incomplete and is not enabled in production, pending review of Strava's API Developer Agreement. Gated behind `ENABLE_AI_SYNTHESIS` / `VITE_ENABLE_AI_SYNTHESIS`.
-
-Automated tests, containerization, and CI/CD are not yet implemented.
-
----
-
 ## Signal methodology
 
 **Efficiency Factor** is grade-adjusted pace normalized to heart-rate reserve. Grade adjustment uses Minetti's (2002) energy-cost-of-running model to account for elevation change, and heart-rate reserve is calculated with the Karvonen method, using each user's own resting and max heart rate.

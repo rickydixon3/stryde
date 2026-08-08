@@ -3,10 +3,10 @@ import { computeGradeAdjustedVelocity } from '../utils/gradeAdjustedPace';
 
 const MOVING_THRESHOLD = 1.33; // m/s, ~20 min/mile - filters out stops, not real running
 
-export const classify = (sufferScore: number, baselines: Baselines): string => {
-    if (sufferScore < baselines.easyThreshold) return 'easy';
-    if (sufferScore < baselines.moderateThreshold) return 'moderate';
-    if (sufferScore < baselines.hardThreshold) return 'hard';
+export const classify = (trimpScore: number, baselines: Baselines): string => {
+    if (trimpScore < baselines.easyThreshold) return 'easy';
+    if (trimpScore < baselines.moderateThreshold) return 'moderate';
+    if (trimpScore < baselines.hardThreshold) return 'hard';
     return 'very_hard';
 }
 
@@ -41,7 +41,7 @@ export const classifyEffortByHRR = (avgHeartrate: number, restingHr: number, max
 export interface RunEfficiencyInput {
     id: string | number;
     start_date: string;
-    suffer_score: number;
+    trimp_score: number;
     stream?: {
         heartrate?: number[];
         velocity?: number[];
@@ -114,6 +114,7 @@ export const computeRunEfficiency = (
     }
 
     const efValue = velAvg / hrr;
+    const effortLevel = classifyEffortByHRR(hrAvg, restingHr, maxHr, baselines);
 
     return {
         viable: true,
@@ -121,6 +122,6 @@ export const computeRunEfficiency = (
         sampleSize: velocity.length,
         date: activity.start_date,
         activityId: activity.id,
-        effortLevel: classify(activity.suffer_score, baselines)
+        effortLevel
     };
 }

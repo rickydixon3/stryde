@@ -1,4 +1,5 @@
 import { LogoMark } from '../components/Logo'
+import { Eye } from 'lucide-react'
 
 const VALUE_PROPS = [
   {
@@ -28,6 +29,25 @@ export default function Landing() {
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/strava`
   }
 
+  const handleDemoLogin = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/demo-login`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        console.error('Demo login failed:', response.status)
+        return
+      }
+
+      const { token } = await response.json()
+      localStorage.setItem('token', token)
+      window.location.href = '/'
+    } catch (err) {
+      console.error('Demo login error:', err)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
@@ -49,13 +69,23 @@ export default function Landing() {
         The signals that show what's actually happening in your training.
         </p>
 
-        <button onClick={handleConnect} className="inline-block">
-          <img
-            src="/strava-connect-button.svg"
-            alt="Connect with Strava"
-            className="h-12"
-          />
-        </button>
+        <div className="flex flex-col items-center">
+          <button onClick={handleConnect} className="inline-block">
+            <img
+              src="/strava-connect-button.svg"
+              alt="Connect with Strava"
+              className="h-12"
+            />
+          </button>
+
+          <button
+            onClick={handleDemoLogin}
+            className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md border border-[#333333] text-sm font-medium text-[#ededed] hover:bg-[#1a1a1a] hover:border-[#444444] transition-colors"
+          >
+            <Eye size={14} />
+            View demo
+          </button>
+        </div>
 
         <p className="text-xs text-[#555555] mt-4">
           By connecting, you agree to our{' '}
