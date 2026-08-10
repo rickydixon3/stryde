@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import TrainingLoadCard from '../components/signals/TrainingLoadCard'
 import SessionSpikeCard from '../components/signals/SessionSpikeCard'
 import CardiacDriftCard from '../components/signals/CardiacDriftCard'
+import { SignalCards } from '../components/signals/SignalCards'
 import { EFTrendCard } from '../components/charts/EFTrendChart'
 import { apiFetch } from '../utils/api'
 
@@ -130,26 +131,26 @@ export default function Dashboard() {
 
     if (syncStatus === 'syncing') {
       return (
-        <div className="max-w-4xl mx-auto px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
           <div className="flex flex-col items-center justify-center py-24">
             <div className="w-8 h-8 border-2 border-[#1f1f1f] border-t-[#1D9E75] rounded-full animate-spin mb-4" />
             <p className="text-sm text-[#ededed] font-medium">Syncing your training history</p>
-            <p className="text-xs text-[#888888] mt-1">This can take a minute for accounts with a lot of history.</p>
+            <p className="text-xs text-[#999999] mt-1">This can take a minute for accounts with a lot of history.</p>
           </div>
         </div>
       )
     }
 
-    if (loading) return <p className="px-8 py-8 text-sm text-[#888888]">Loading...</p>
+    if (loading) return <p className="px-4 sm:px-8 py-8 text-sm text-[#999999]">Loading...</p>
 
 
     return (
-        <div className="max-w-4xl mx-auto px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
           
           {/* Page header */}
           <div className="mb-6">
-            <h1 className="text-lg font-medium text-[#ededed]">Running efficiency</h1>
-            <p className="text-sm text-[#888888] mt-0.5">Last 60 days · {efData.length} runs</p>
+            <h1 className="text-xl font-medium text-[#ededed]">Running efficiency</h1>
+            <p className="text-sm text-[#999999] mt-0.5">Last 60 days · {efData.length} runs</p>
           </div>
 
           {/* Trend section -- full-width, untouched */}
@@ -161,9 +162,15 @@ export default function Dashboard() {
 
           <div className="h-3" />
 
-          {/* Signal cards -- equal width, own independent cards */}
-          <p className="text-xs text-[#888888] uppercase tracking-wide mb-3">Signals</p>
-          <div className="grid grid-cols-3 gap-3">
+          {/* Signals -- compact tap-to-expand rows on mobile, full cards at md and above */}
+          <p className="hidden md:block text-xs text-[#999999] uppercase tracking-wide mb-3">Signals</p>
+          <h2 className="md:hidden text-[15px] font-medium text-[#ededed] mb-2.5">Signals</h2>
+
+          <div className="md:hidden">
+            <SignalCards cardiac={cardiacData} trainingLoad={trainingLoadData} spike={spikeData} />
+          </div>
+
+          <div className="hidden md:grid md:grid-cols-3 gap-3">
             {cardiacData && <CardiacDriftCard data={cardiacData} />}
             {trainingLoadData && <TrainingLoadCard data={trainingLoadData} />}
             {spikeData && <SessionSpikeCard data={spikeData} />}

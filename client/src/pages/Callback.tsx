@@ -26,5 +26,5 @@ export default function Callback() {
       })
   }, [])
 
-  return <p className="px-8 py-8 text-sm text-[#888888]">Signing you in...</p>
+  return <p className="px-8 py-8 text-sm text-[#999999]">Signing you in...</p>
 }

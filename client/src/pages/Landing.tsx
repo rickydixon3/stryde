@@ -64,7 +64,7 @@ export default function Landing() {
         <br />
         Connect with Strava seamlessly.
         </h1>
-        <p className="text-base text-[#888888] mb-10 max-w-xl mx-auto">
+        <p className="text-base text-[#999999] mb-10 max-w-xl mx-auto">
         Efficiency factor, cardiac drift, and TRIMP-based training load.
         The signals that show what's actually happening in your training.
         </p>
@@ -87,7 +87,7 @@ export default function Landing() {
           </button>
         </div>
 
-        <p className="text-xs text-[#555555] mt-4">
+        <p className="text-xs text-[#999999] mt-4">
           By connecting, you agree to our{' '}
           <a href="/privacy" className="text-[#378ADD] hover:underline">
             Privacy Policy
@@ -115,7 +115,7 @@ export default function Landing() {
               <h3 className="text-sm font-medium text-[#ededed] mb-2">
                 {prop.title}
               </h3>
-              <p className="text-sm text-[#888888] leading-relaxed">
+              <p className="text-sm text-[#999999] leading-relaxed">
                 {prop.body}
               </p>
             </div>
@@ -128,9 +128,9 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-6 py-8 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LogoMark size={18} />
-            <span className="text-xs text-[#555555]">Stryde</span>
+            <span className="text-xs text-[#999999]">Stryde</span>
           </div>
-          <a href="/privacy" className="text-xs text-[#555555] hover:text-[#888888] transition-colors">
+          <a href="/privacy" className="text-xs text-[#999999] hover:text-[#999999] transition-colors">
             Privacy Policy
           </a>
         </div>

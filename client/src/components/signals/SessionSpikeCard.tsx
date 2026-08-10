@@ -21,15 +21,15 @@ function SessionSpikeCard({ data }: Props) {
 
   if (!data.viable) {
     return (
-      <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-xs text-[#888888] uppercase tracking-wide">
+      <div className="border border-[#1f1f1f] rounded-lg p-4 md:p-5 bg-[#161616] flex flex-col h-full">
+        <div className="flex justify-between items-start mb-3 md:mb-4 gap-2">
+          <p className="text-xs text-[#999999] uppercase tracking-wide">
             Session spike
           </p>
         </div>
         <div className="mb-3">
           <span className="text-2xl font-medium text-[#ededed]">—</span>
-          <p className="text-sm text-[#888888] mt-1">
+          <p className="text-sm text-[#999999] mt-1">
             {data.reason ?? 'Not enough data yet'}
           </p>
         </div>
@@ -38,29 +38,36 @@ function SessionSpikeCard({ data }: Props) {
   }
 
   return (
-    <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
+    <div className="border border-[#1f1f1f] rounded-lg p-4 md:p-5 bg-[#161616] flex flex-col h-full">
 
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-xs text-[#888888] uppercase tracking-wide">
+      <div className="flex justify-between items-start mb-3 md:mb-4 gap-2">
+        <p className="text-xs text-[#999999] uppercase tracking-wide">
           Session spike
         </p>
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${badgeClass}`}>
+        <span className={`text-xs px-2 py-0.5 rounded font-medium flex-shrink-0 ${badgeClass}`}>
           {badgeLabel}
         </span>
       </div>
 
       <div className="mb-3">
-        <span className="text-2xl font-medium text-[#ededed]">
-          {isClear ? '—' : `${data.spikePercentage}% above baseline`}
-        </span>
-        <p className="text-sm text-[#888888] mt-1">
+        {isClear ? (
+          <span className="text-2xl font-medium text-[#ededed]">—</span>
+        ) : (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-medium text-[#ededed]">
+              {Math.round(data.spikePercentage!)}%
+            </span>
+            <span className="text-sm text-[#999999]">above baseline</span>
+          </div>
+        )}
+        <p className="text-sm text-[#999999] mt-1">
           {isClear
             ? 'No outlier sessions detected'
             : `${data.spikeRun!.name} · ${data.spikeRun!.distance}mi`}
         </p>
       </div>
 
-      <p className="text-xs text-[#555555] mt-auto">
+      <p className="text-xs text-[#999999] mt-auto">
         {isClear
           ? 'Based on your trailing 30-day longest run'
           : `Compared to your ${data.baselineRun!.distance}mi longest run in the prior 30 days`}

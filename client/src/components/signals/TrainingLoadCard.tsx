@@ -26,39 +26,42 @@ function TrainingLoadCard({ data }: Props) {
     : 'bg-[#0a2010] text-[#4ade80]'
 
   return (
-    <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616] flex flex-col h-full">
+    <div className="border border-[#1f1f1f] rounded-lg p-4 md:p-5 bg-[#161616] flex flex-col h-full">
 
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-xs text-[#888888] uppercase tracking-wide">
+      <div className="flex justify-between items-start mb-3 md:mb-4 gap-2">
+        <p className="text-xs text-[#999999] uppercase tracking-wide">
           Training load
         </p>
-        <span className={`text-xs px-2 py-0.5 rounded font-medium ${badgeClass}`}>
+        <span className={`text-xs px-2 py-0.5 rounded font-medium flex-shrink-0 ${badgeClass}`}>
           {badgeLabel}
         </span>
       </div>
 
       <div className="mb-3">
-        <span className="text-2xl font-medium text-[#ededed]">
-          {data.sevenDayTotalTrimp} TRIMP
-        </span>
-        <p className="text-sm text-[#888888] mt-1">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-medium text-[#ededed]">
+            {Math.round(data.sevenDayTotalTrimp)}
+          </span>
+          <span className="text-sm text-[#999999]">TRIMP</span>
+        </div>
+        <p className="text-sm text-[#999999] mt-1">
           7-day total
         </p>
       </div>
 
-      <div className="mb-3 pt-3 border-t border-[#1f1f1f]">
+      <div className="mb-2 pt-2 md:mb-3 md:pt-3 border-t border-[#1f1f1f]">
         <span className="text-lg font-medium text-[#ededed]">
           {data.elevatedDaysThisWeek} of 7 days
         </span>
-        <p className="text-xs text-[#888888] mt-0.5">
+        <p className="text-xs text-[#999999] mt-0.5">
           Elevated effort or higher
         </p>
       </div>
 
-      <p className="text-xs text-[#555555] mt-auto">
+      <p className="text-xs text-[#999999] mt-auto">
         {data.highLoadDayCount} high-load days in last 10
       </p>
-      <p className="text-[12px] text-[#444444] mt-1">
+      <p className="text-[12px] text-[#999999] mt-1">
         Based on heart-rate-derived training impulse (TRIMP)
       </p>
 

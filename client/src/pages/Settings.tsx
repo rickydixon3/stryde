@@ -199,7 +199,7 @@ export default function Settings() {
     {/* Manual Sync w/ Strava */}
       <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
         <p className="text-sm font-medium text-[#ededed] mb-1">Sync your Strava data</p>
-        <p className="text-sm text-[#888888] mb-4">
+        <p className="text-sm text-[#999999] mb-4">
           Pull in any new runs from Strava right now, instead of waiting.
         </p>
 
@@ -222,7 +222,7 @@ export default function Settings() {
 {/* Heart rate settings */}
 <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
   <p className="text-sm font-medium text-[#ededed] mb-1">Heart rate</p>
-  <p className="text-sm text-[#888888] mb-4">
+  <p className="text-sm text-[#999999] mb-4">
     Used to calculate efficiency, drift, training load, and effort across your runs.
   </p>
 
@@ -237,7 +237,7 @@ export default function Settings() {
   </p>
 )}
 
-  <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+  <label className="text-xs text-[#999999] uppercase tracking-wide block mb-2">
     Resting heart rate
   </label>
   <input
@@ -249,7 +249,7 @@ export default function Settings() {
     }`}
   />
 
-  <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+  <label className="text-xs text-[#999999] uppercase tracking-wide block mb-2">
     Max heart rate
   </label>
   <input
@@ -278,14 +278,14 @@ export default function Settings() {
     {!correctingHr ? (
       <button
         onClick={() => setCorrectingHr(true)}
-        className="text-xs text-[#888888] hover:text-[#ededed] transition-colors"
+        className="text-xs text-[#999999] hover:text-[#ededed] transition-colors"
       >
         My heart rate was entered incorrectly
       </button>
     ) : (
       <button
         onClick={() => setCorrectingHr(false)}
-        className="text-xs text-[#888888] hover:text-[#ededed] transition-colors"
+        className="text-xs text-[#999999] hover:text-[#ededed] transition-colors"
       >
         Cancel
       </button>
@@ -296,7 +296,7 @@ export default function Settings() {
       {/* Disconnect */}
       <div className="border border-[#1f1f1f] rounded-lg p-5 bg-[#161616]">
         <p className="text-sm font-medium text-[#ededed] mb-1">Disconnect Strava</p>
-        <p className="text-sm text-[#888888] mb-4">
+        <p className="text-sm text-[#999999] mb-4">
           Revokes Stryde's access to your Strava account. Your training history stays saved,
           and you can reconnect anytime.
         </p>
@@ -315,12 +315,12 @@ export default function Settings() {
       {/* Danger zone */}
       <div className="border border-[#ef4444]/30 rounded-lg p-5 bg-[#161616]">
         <p className="text-sm font-medium text-[#ef4444] mb-1">Delete account</p>
-        <p className="text-sm text-[#888888] mb-4">
+        <p className="text-sm text-[#999999] mb-4">
           This permanently deletes your account, revokes Stryde's access to your Strava data,
           and removes all activities, streams, and settings we've stored. This cannot be undone.
         </p>
 
-        <label className="text-xs text-[#888888] uppercase tracking-wide block mb-2">
+        <label className="text-xs text-[#999999] uppercase tracking-wide block mb-2">
           Type DELETE to confirm
         </label>
         <input
@@ -328,7 +328,7 @@ export default function Settings() {
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder="DELETE"
-          className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#ededed] placeholder-[#555555] outline-none focus:border-[#ef4444] mb-3"
+          className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#ededed] placeholder-[#999999] outline-none focus:border-[#ef4444] mb-3"
         />
 
         {deleteError && <p className="text-xs text-[#ef4444] mb-3">{deleteError}</p>}
@@ -343,7 +343,7 @@ export default function Settings() {
       </div>
 
       {/* Footer links */}
-      <p className="text-xs text-[#555555] text-center mt-2">
+      <p className="text-xs text-[#999999] text-center mt-2">
         <a href="/privacy" className="hover:underline">Privacy Policy</a>
         {' · '}
         <a href="mailto:stryde.application@gmail.com" className="hover:underline">Contact support</a>

@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
     <div className="max-w-2xl mx-auto px-8 py-12">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-[#888888] hover:text-[#ededed] transition-colors mb-6"
+        className="flex items-center gap-1.5 text-sm text-[#999999] hover:text-[#ededed] transition-colors mb-6"
       >
         <ArrowLeft size={14} />
         Back
@@ -17,11 +17,11 @@ export default function PrivacyPolicy() {
       <h1 className="text-lg font-medium text-[#ededed] mb-2">
         Privacy Policy
       </h1>
-      <p className="text-sm text-[#555555] mb-8">
+      <p className="text-sm text-[#999999] mb-8">
         Last updated: July 2026
       </p>
 
-      <div className="flex flex-col gap-6 text-sm text-[#888888] leading-relaxed">
+      <div className="flex flex-col gap-6 text-sm text-[#999999] leading-relaxed">
         <section>
           <h2 className="text-[#ededed] font-medium mb-2">
             What we collect
