@@ -2,8 +2,7 @@
 
 Running analytics platform that computes personalized training signals from Strava running data: efficiency factor, cardiac drift, training load, and session spike.
 
-**Live app:** https://stryde-iota.vercel.app
-
+**Live app:** https://stryderun.com/
 <img src="client/public/dashboard-preview.png" alt="Stryde dashboard showing efficiency factor trend, cardiac drift, training load, and session spike signals" width="500"/>
 
 ---
