@@ -164,6 +164,47 @@ router.post('/demo-login', async (req, res) => {
         return res.status(404).json({ error: 'Demo account not configured' });
     }
 
+    // healing demo data
+    const { data: mostRecent } = await supabase
+        .from('activities')
+        .select('start_date')
+        .eq('user_id', demoUser.id)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (mostRecent) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(7, 30, 0, 0);
+
+        const lastSeeded = new Date(mostRecent.start_date);
+
+        const driftDays = Math.floor(
+            (yesterday.getTime() - lastSeeded.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (driftDays > 0) {
+            const { data: demoActivities } = await supabase
+                .from('activities')
+                .select('id, start_date')
+                .eq('user_id', demoUser.id);
+
+            if (demoActivities) {
+                await Promise.all(
+                    demoActivities.map(activity => {
+                        const shifted = new Date(activity.start_date);
+                        shifted.setDate(shifted.getDate() + driftDays);
+                        return supabase
+                            .from('activities')
+                            .update({ start_date: shifted.toISOString() })
+                            .eq('id', activity.id);
+                    })
+                );
+            }
+        }
+    }
+
     const appToken = jwt.sign(
         { userId: demoUser.id },
         process.env.JWT_SECRET as string,
